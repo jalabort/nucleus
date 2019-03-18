@@ -4,6 +4,8 @@ import pathlib
 import pandas as pd
 import concurrent.futures
 
+from hudl_aws.s3 import write_to_s3, ContentType, S3Location
+
 from nucleus.base import Serializable, LazyList
 from nucleus.image import Image
 from nucleus.box import Box, BoxCollection
@@ -67,7 +69,7 @@ class VqDataset(Serializable):
     def cache(self, cache: Union[str, pathlib.Path]):
         cache = pathlib.Path(cache) / self.name
         cache.mkdir(parents=True, exist_ok=True)
-        self._cache = cache
+        self._cache = cache.absolute()
 
     @classmethod
     def deserialize(cls, parsed: ParsedDataset) -> 'VqDataset':
@@ -466,7 +468,22 @@ class VqDataset(Serializable):
         -------
 
         """
-        raise NotImplemented
+        return '''
+        # Description
+
+        This is a `hudlrd quilt dataset`. The typical structure of these 
+        datasets is as follows:
+        
+        ```
+             --- Columns ---
+
+        path            object -- The image path
+        labels          object -- The image labels
+        boxes           object -- The image boxes
+        boxes_labels    object -- The boxes labels
+        n_boxes          int64 -- The number of boxes
+        ```
+        '''
 
     def view_row(self, index: int = 0, image_args: Dict = None):
         from nucleus.visualize.color_maps import BasketballJerseyLabelColorMap
@@ -481,3 +498,102 @@ class VqDataset(Serializable):
             )
 
         image.view(**image_args)
+
+    def __iter__(self) -> Tuple[pd.Series, Image]:
+        for index in range(len(self)):
+            row = self._get_row_from_index(index=index)
+            yield row, self._create_image_from_row(row=row)
+
+    def __getitem__(self, index: int) -> Tuple[pd.Series, Image]:
+        row = self._get_row_from_index(index=index)
+        return row, self._create_image_from_row(row=row)
+
+    # TODO: Allow compressed?
+    def upload_images_to_s3(
+            self,
+            bucket: str,
+            key: str,
+            parallel: bool = True,
+            image_format: str = 'png',
+            update_df=True,
+    ) -> None:
+        r"""
+
+        Parameters
+        ----------
+        bucket
+        key
+        parallel
+        image_format
+        update_df
+
+        Returns
+        -------
+
+        """
+        if parallel:
+            def _upload_image_to_s3(index):
+                return self._upload_image_from_row_index(
+                    index=index,
+                    bucket=bucket,
+                    key=key,
+                    image_format=image_format,
+                    update_df=update_df
+                )
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                list(
+                    progress_bar(
+                        executor.map(
+                            _upload_image_to_s3,
+                            range(len(self))
+                        ),
+                        total=len(self)
+                    )
+                )
+        else:
+            for row, image in progress_bar(self):
+                stem = pathlib.Path(row[DatasetKeys.PATH.value]).stem
+                full_key = f'{key}/{stem}.{image_format}'
+                write_to_s3(
+                    data=image.bytes(image_format=image_format),
+                    bucket=bucket,
+                    key=full_key,
+                    content_type=ContentType[image_format]
+                )
+                if update_df:
+                    row[DatasetKeys.PATH.value] = S3Location(bucket, full_key).path
+
+    def _upload_image_from_row_index(
+            self,
+            index: int,
+            bucket: str,
+            key: str,
+            image_format: str = 'png',
+            update_df: bool = True
+    ) -> None:
+        r"""
+
+        Parameters
+        ----------
+        index
+        bucket
+        key
+        image_format
+
+        Returns
+        -------
+
+        """
+        row = self._get_row_from_index(index=index)
+        image = self._create_image_from_row(row=row)
+
+        stem = pathlib.Path(row[DatasetKeys.PATH.value]).stem
+        full_key = f'{key}/{stem}.{image_format}'
+        write_to_s3(
+            data=image.bytes(image_format=image_format),
+            bucket=bucket,
+            key=full_key,
+            content_type=ContentType[image_format]
+        )
+        if update_df:
+            row[DatasetKeys.PATH.value] = S3Location(bucket, full_key).path

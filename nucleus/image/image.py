@@ -1,6 +1,7 @@
 from typing import Union, Optional, Tuple, List, Dict
 
 import os
+import io
 import pathlib
 from urllib.request import urlopen
 
@@ -11,6 +12,7 @@ import PIL.Image as PilImage
 from nucleus.box import BoxCollection
 
 from nucleus.base import Serializable
+from nucleus.dataset import DatasetKeys
 from nucleus.visualize import ImageViewer
 # TODO: Use python-aws
 from nucleus.s3 import is_s3_path, get_signed_s3_url
@@ -68,10 +70,14 @@ class Image(Serializable):
         -------
 
         """
+        box_collection = parsed.get(DatasetKeys.BOXES.value)
+        if box_collection is not None:
+            box_collection = BoxCollection.deserialize(parsed=box_collection)
+
         return cls.from_path(
             path=parsed['path'],
             labels=parsed['labels'],
-            box_collection=BoxCollection.deserialize(parsed['boxes'])
+            box_collection=box_collection
         )
 
     def serialize(self, path: Union[str, pathlib.Path]) -> ParsedImage:
@@ -81,11 +87,15 @@ class Image(Serializable):
         -------
 
         """
-        return dict(
+        parsed = dict(
             path=str(pathlib.Path(path).absolute()),
-            labels=self.labels,
-            boxes=self.box_collection.serialize()
+            labels=self.labels
         )
+
+        if self.box_collection is not None:
+            parsed['boxes'] = self.box_collection.serialize()
+
+        return parsed
 
     def save(
             self,
@@ -119,6 +129,7 @@ class Image(Serializable):
 
         if not path.exists() or rewrite:
             parsed = self.serialize(path=path)
+            # TODO: Use tensorflow here?
             pil_image = PilImage.fromarray(self.np_hwc())
             pil_image.save(path)
 
@@ -293,6 +304,18 @@ class Image(Serializable):
         """
         return self.hwc.numpy()
 
+    def bytes(self, image_format: str = 'png') -> bytes:
+        r"""
+
+        Returns
+        -------
+
+        """
+        pil_image = PilImage.fromarray(self.np_hwc())
+        byte_array = io.BytesIO()
+        pil_image.save(byte_array, format=image_format)
+        return byte_array.getvalue()
+
     def images_from_box_collection(
             self,
             skip_labels: Union[str, List[str]] = None
@@ -313,8 +336,11 @@ class Image(Serializable):
         return [
             Image(chw=crop_chw(self.chw, box.ijhw), labels=box.labels)
             for box in self.box_collection.boxes()
-            if skip_labels is None
-                    or any(label not in skip_labels for label in box.labels)
+            if skip_labels is None or (
+                all(label not in skip_labels for label in box.labels)
+                and
+                len(box.labels) > 0
+            )
         ]
 
     def __str__(self) -> str:

@@ -101,8 +101,10 @@ def create_examples_from_jobs(
                 if state:
                     if label == 'not-visible':
                         labels.append('occluded')
+                        labels.append(None)
                     elif label == 'partially-visible':
                         labels.append('partial')
+                        labels.append(None)
                     else:
                         labels.append('visible')
                         labels.append(label)

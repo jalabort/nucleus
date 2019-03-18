@@ -211,19 +211,6 @@ class MatplotlibImageViewer(MatplotlibRenderer):
                     fontsize=caption_text_size,
                     color=caption_text_color
                 )
-                # corrector = 0
-                # x, y = self.pixels.shape[1] / 2 + corrector, 0 - corrector
-                # vertical_alignment = 'top'
-                # horizontal_alignment = 'left'
-                #
-                # t = ax.text(x, y, caption,
-                #             verticalalignment=vertical_alignment,
-                #             horizontalalignment=horizontal_alignment,
-                #             color=caption_text_color,
-                #             size=caption_text_size)
-                # t.set_bbox(dict(facecolor=caption_face_color,
-                #                 edgecolor=caption_edge_color,
-                #                 alpha=caption_box_alpha))
 
         # set axes options
         _set_axes_options(
@@ -383,10 +370,11 @@ class MatplotlibBoxViewer(MatplotlibRenderer):
 
         if label_color_map is not None:
             label = self.labels[0].upper()
-            edge_color = label_color_map[label].value
-            face_color = label_color_map[label].value
-            caption_edge_color = label_color_map[label].value
-            caption_face_color = label_color_map[label].value
+            color = label_color_map[label].value
+            edge_color = color
+            face_color = color
+            caption_edge_color = color
+            caption_face_color = color
 
         ijhw = scale_coords(coords=self.ijhw, resolution=resolution)
 
