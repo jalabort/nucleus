@@ -9,7 +9,7 @@ import numpy as np
 import tensorflow as tf
 import PIL.Image as PilImage
 
-from nucleus.box import BoxCollection
+from nucleus.box import Box, BoxCollection
 
 from nucleus.base import Serializable
 from nucleus.dataset import DatasetKeys
@@ -39,7 +39,7 @@ class Image(Serializable):
             self,
             chw: Union[tf.Tensor, np.ndarray],
             labels: Optional[Union[List[str], str]] = None,
-            box_collection: Optional[BoxCollection] = None,
+            box_collection: Optional[Union[List[Box], BoxCollection]] = None,
     ) -> None:
 
         if chw.ndim < 2:
@@ -56,6 +56,11 @@ class Image(Serializable):
 
         self.chw = chw
         self.labels = labels if not isinstance(labels, str) else [labels]
+
+        if (box_collection is not None
+                and isinstance(box_collection, list)):
+            box_collection = BoxCollection.from_boxes(boxes=box_collection)
+
         self.box_collection = box_collection
 
     @classmethod
@@ -144,7 +149,7 @@ class Image(Serializable):
             cls,
             path: Union[str, pathlib.Path],
             labels: List[str] = None,
-            box_collection: BoxCollection = None
+            box_collection: Optional[Union[List[Box], BoxCollection]] = None
     ) -> 'Image':
         r"""
 
@@ -176,7 +181,7 @@ class Image(Serializable):
             cls,
             chw: Union[tf.Tensor, np.ndarray],
             labels: List[str] = None,
-            box_collection: BoxCollection = None
+            box_collection: Optional[Union[List[Box], BoxCollection]] = None
     )-> 'Image':
         r"""
 

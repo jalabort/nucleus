@@ -16,7 +16,7 @@ QUILT_USER = 'hudlrd'
 QUILT_PKG = 'basketball'
 
 
-# TODO: Implement Serializable
+# TODO: Rethink this class
 class BasketballDataset(Dataset):
     r"""
 

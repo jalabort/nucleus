@@ -239,7 +239,7 @@ class Dataset(Serializable):
     ) -> pd.DataFrame:
         return quilt_tools.get_df(
             user=user,
-            pkg=pkg,
+            package=pkg,
             hash_key=hash_key,
             force=force
         )
@@ -379,10 +379,10 @@ class Dataset(Serializable):
         """
         if readme is None:
             readme = self.create_default_readme(self.df)
-        quilt_tools.update_df(
+        quilt_tools.update_pkg(
             self.df,
             user=user,
-            pkg=pkg,
+            package=pkg,
             readme=readme,
             hash_key=hash_key
         )

@@ -16,6 +16,9 @@ from .functions import (
 )
 
 
+__all__ = ['Box', 'BoxCollection']
+
+
 # TODO[jalabort]: There are score and label_scores
 class Box(Serializable):
     r"""

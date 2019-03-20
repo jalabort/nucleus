@@ -5,6 +5,8 @@ import boto3
 import warnings
 import pandas as pd
 
+from concurrent.futures import ThreadPoolExecutor
+
 from hudl_aws.s3 import read_from_s3
 
 from nucleus.types import Num
@@ -44,10 +46,12 @@ def get_job_keys(bucket: str, key: str) -> Iterable[str]:
             yield key_path
 
 
+# TODO: Revisit parallel path flow, very memory intensive atm
 def get_jobs(
         bucket: str,
         key: str,
         n_jobs: Optional[int] = None,
+        parallel: bool = True,
         show_progress: bool = False
 ) -> Iterable[Dict[str, Iterable]]:
     r"""
@@ -57,17 +61,59 @@ def get_jobs(
     bucket
     key
     n_jobs
+    parallel
     show_progress
 
     Returns
     -------
 
     """
-    keys = get_job_keys(bucket=bucket, key=key)
+    keys = list(get_job_keys(bucket=bucket, key=key))[:n_jobs]
 
+    if parallel:
+        return _get_jobs_parallel(bucket, keys, show_progress)
+    else:
+        return _get_jobs_sequential(bucket, keys, show_progress)
+
+
+def _get_jobs_parallel(bucket, keys, show_progress):
+    r"""
+
+    Parameters
+    ----------
+    bucket
+    keys
+    show_progress
+
+    Returns
+    -------
+
+    """
+    def _load(k):
+        return json.load(read_from_s3(bucket, k))
+
+    with ThreadPoolExecutor() as executor:
+        threads = executor.map(_load, keys)
+        if show_progress:
+            threads = progress_bar(threads, total=len(keys))
+        return list(threads)
+
+
+def _get_jobs_sequential(bucket, keys, show_progress):
+    r"""
+
+    Parameters
+    ----------
+    bucket
+    keys
+    show_progress
+
+    Returns
+    -------
+
+    """
     if show_progress:
-        keys = progress_bar(list(keys)[:n_jobs])
-
+        keys = progress_bar(keys)
     for key in keys:
         yield json.load(read_from_s3(bucket, key))
 
@@ -135,6 +181,7 @@ def create_df_from_s3(
         bucket: str,
         key: str,
         n_jobs: Optional[int] = None,
+        parallel: bool = True,
         show_progress: bool = False
 ) -> pd.DataFrame:
     r"""
@@ -144,6 +191,7 @@ def create_df_from_s3(
     bucket
     key
     n_jobs
+    parallel
     show_progress
 
     Returns
@@ -154,6 +202,7 @@ def create_df_from_s3(
         bucket=bucket,
         key=key,
         n_jobs=n_jobs,
+        parallel=parallel,
         show_progress=show_progress
     )
     examples = create_examples_from_jobs(jobs)

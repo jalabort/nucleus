@@ -1,16 +1,17 @@
-from typing import Optional
+from typing import Optional, Iterable
 
 import quilt
 import tempfile
+import numpy as np
 import pandas as pd
 
 
-__all__ = ['get_df', 'update_df']
+__all__ = ['get_pkg', 'get_df', 'update_pkg']
 
 
-def get_df(
+def get_pkg(
         user: str,
-        pkg: str,
+        package: str,
         hash_key=None,
         force=True
 ) -> pd.DataFrame:
@@ -19,7 +20,7 @@ def get_df(
     Parameters
     ----------
     user
-    pkg
+    package
     hash_key
     force
 
@@ -27,16 +28,71 @@ def get_df(
     -------
 
     """
-    pkg_path = f'{user}/{pkg}'
+    pkg_path = f'{user}/{package}'
     quilt.install(pkg_path, hash=hash_key, force=force)
-    pkg = quilt.load(pkg_path)
-    return pkg.df
+    return quilt.load(pkg_path)
 
 
-def update_df(
+def decode_df_columns(
+        df: pd.DataFrame,
+        column_keys: Iterable
+) -> pd.DataFrame:
+    r"""
+
+    Parameters
+    ----------
+    df
+    column_keys
+
+    Returns
+    -------
+
+    """
+    def _decode_array_column(array: np.ndarray):
+        if not isinstance(array, (pd.Series, np.ndarray)):
+            return array
+        else:
+            return [_decode_array_column(a) for a in array]
+
+    for key in column_keys:
+        if df.get(key) is not None:
+            df[key] = _decode_array_column(df[key])
+
+    return df
+
+
+def get_df(
+        user: str,
+        package: str,
+        hash_key=None,
+        force: bool = True,
+        column_keys: Optional[Iterable] = None
+) -> pd.DataFrame:
+    r"""
+
+    Parameters
+    ----------
+    user
+    package
+    hash_key
+    force
+    column_keys
+
+    Returns
+    -------
+
+    """
+    package = get_pkg(user=user, package=package, hash_key=hash_key, force=force)
+    df = package.df()
+    if column_keys is not None:
+        df = decode_df_columns(df=df, column_keys=column_keys)
+    return df
+
+
+def update_pkg(
         df: pd.DataFrame,
         user: str,
-        pkg: str,
+        package: str,
         readme: Optional[str] = None,
         hash_key=None
 ):
@@ -46,7 +102,7 @@ def update_df(
     ----------
     df
     user
-    pkg
+    package
     readme
     hash_key
 
@@ -54,7 +110,7 @@ def update_df(
     -------
 
     """
-    pkg_path = f'{user}/{pkg}'
+    pkg_path = f'{user}/{package}'
 
     quilt.build(
         pkg_path,
@@ -73,7 +129,7 @@ def update_df(
         with tempfile.NamedTemporaryFile() as tmp:
             tmp.write(readme.encode('UTF-8'))
             tmp.flush()
-            quilt.build(f"{pkg_path}/README", tmp.name)
+            quilt.build(f'{pkg_path}/README', tmp.name)
 
     quilt.login()
     quilt.push(pkg_path, is_public=True, hash=hash_key)

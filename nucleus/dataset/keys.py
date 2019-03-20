@@ -1,7 +1,7 @@
 import enum
 
 
-__all__ = ['DatasetKeys']
+__all__ = ['DatasetKeys', 'DatasetListKeys']
 
 
 class DatasetKeys(enum.Enum):
@@ -11,3 +11,9 @@ class DatasetKeys(enum.Enum):
     BOXES = 'boxes'
     BOXES_LABELS = 'boxes_labels'
     N_BOXES = 'n_boxes'
+
+
+class DatasetListKeys(enum.Enum):
+    LABELS = 'labels'
+    BOXES = 'boxes'
+    BOXES_LABELS = 'boxes_labels'

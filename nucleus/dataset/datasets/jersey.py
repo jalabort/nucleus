@@ -1,136 +1,124 @@
-from typing import Optional, Union
+from typing import Optional, Union, List
+
 
 import pathlib
+import numpy as np
 import pandas as pd
 
-from nucleus.dataset.base import Dataset
+from nucleus.dataset import DatasetKeys
+
+from .base import QuiltDataset
 
 
-__all__ = ['BasketballJerseyDataset']
-
-
-S3_BUCKET = 'hudlrd-experiments'
-S3_KEY = 'jersey-tagging/development'
-QUILT_USER = 'hudlrd'
-QUILT_PKG = 'basketball_jerseys'
-
-
-# TODO: Implement Serializable
-class BasketballJerseyDataset(Dataset):
+class BasketballJerseyDataset(QuiltDataset):
     r"""
-
-    Attributes
-    ----------
-    df
-    cache
-    images_lazy
     """
-    s3_bucket = S3_BUCKET
-    s3_key = S3_KEY
-    quilt_user = QUILT_USER
-    quilt_pkg = QUILT_PKG
+    user = 'hudlrd'
+    package = 'basketball_jerseys'
 
     def __init__(
             self,
-            df: pd.DataFrame,
-            cache: Union[str, pathlib.Path] = './dataset_cache'
+            hash_key: Optional[str] = None,
+            force: Optional[bool] = True,
+            cache: Union[str, pathlib.Path] = './dataset_cache',
     ) -> None:
         super(BasketballJerseyDataset, self).__init__(
-            name=self.__class__.__name__, df=df, cache=cache
-        )
-
-    @classmethod
-    def from_quilt(
-            cls,
-            hash_key=None,
-            force=True,
-            cache: Union[str, pathlib.Path] = './dataset_cache'
-    ) -> 'Dataset':
-        r"""
-
-        Parameters
-        ----------
-        hash_key
-        force
-        cache
-
-        Returns
-        -------
-
-        """
-        df = cls._from_quilt(
-            user=cls.quilt_user,
-            pkg=cls.quilt_pkg,
+            user=self.user,
+            package=self.package,
             hash_key=hash_key,
             force=force,
+            cache=cache
         )
-        return cls(df=df, cache=cache)
 
-    @classmethod
-    def from_s3(
-            cls,
-            n_jobs: Optional[int] = None,
-            cache: Union[str, pathlib.Path] = './dataset_cache',
-            show_progress: bool = True,
-    ) -> 'BasketballDataset':
-        r"""
-
-        Parameters
-        ----------
-        n_jobs
-        cache
-        show_progress
-
-        Returns
-        -------
-
-        """
-        df = cls._from_s3(
-            bucket=cls.s3_bucket,
-            key=cls.s3_key,
-            pattern=cls.s3_pattern,
-            n_jobs=n_jobs,
-            show_progress=show_progress
-        )
-        return cls(df=df, cache=cache)
-
-    def update_quilt_df(
+    def unique_labels(
             self,
-            user=QUILT_USER,
-            pkg=QUILT_PKG,
-            readme: Optional[str] = None,
-            hash_key=None
-    ):
+            label_position: Optional[Union[int, List[int]]] = None
+    ) -> List[List[str]]:
         r"""
 
         Parameters
         ----------
-        user
-        pkg
-        readme
-        hash_key
+        label_position
 
         Returns
         -------
 
         """
-        super(BasketballDataset, self).update_quilt_df(
-            user=user,
-            pkg=pkg,
-            readme=readme,
-            hash_key=hash_key
-        )
+        if label_position is None:
+            label_position = range(len(self.df[DatasetKeys.LABELS.value][0]))
 
-    @classmethod
-    def create_default_readme(cls, df: pd.DataFrame) -> str:
+        uniques = [[] for _ in label_position]
+        for labels in self.df[DatasetKeys.LABELS.value]:
+            for i, label in enumerate(np.asanyarray(labels)[label_position]):
+                if label is None:
+                    continue
+                uniques[i].append(label)
+
+        return [sorted(list(set(unique))) for unique in uniques]
+
+    def create_label_count_df(
+            self,
+            label_position: Optional[Union[int, List[int]]] = None
+    ) -> List[pd.DataFrame]:
         r"""
-
-        Parameters
-        ----------
-        df
 
         Returns
         -------
 
         """
-        raise NotImplemented
+        if label_position is None:
+            label_position = range(len(self.df[DatasetKeys.LABELS.value][0]))
+
+        labels_dict = {}
+        for labels in self.df[DatasetKeys.LABELS.value]:
+            for i, label in enumerate(np.asanyarray(labels)[label_position]):
+                if label is None:
+                    continue
+                if labels_dict.get(i) is None:
+                    labels_dict[i] = {}
+                    labels_dict[i][label] = 1
+                else:
+                    if labels_dict[i].get(label) is None:
+                        labels_dict[i][label] = 1
+                    else:
+                        labels_dict[i][label] += 1
+
+        dfs = []
+        for i in label_position:
+            data = sorted(labels_dict[i].items())
+            df = pd.DataFrame.from_records(
+                data=data,
+                columns=['label', 'count']
+            )
+            dfs.append(df)
+
+        return dfs
+
+    # TODO: Move viewing code to visualization
+    def view_labels_distributions(
+            self,
+            label_position: Optional[Union[int, List[int]]] = None,
+            vertical: bool = False,
+            return_charts: bool = False
+    ) -> Optional[List[object]]:
+        r"""
+
+        Returns
+        -------
+
+        """
+        import altair as alt
+        alt.renderers.enable('notebook')
+
+        x, y = 'label', 'count'
+        if vertical:
+            x, y = y, x
+
+        charts = []
+        for df in self.create_label_count_df(label_position=label_position):
+            chart = alt.Chart(df).mark_bar().encode(x=x, y=y)
+            chart.display()
+            charts.append(chart)
+
+        if return_charts:
+            return charts
