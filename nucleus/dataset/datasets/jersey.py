@@ -6,8 +6,9 @@ import numpy as np
 import pandas as pd
 
 from nucleus.dataset import DatasetKeys
+from nucleus.types import ParsedDataset
 
-from .base import QuiltDataset
+from .base import BaseDataset, QuiltDataset
 
 
 class BasketballJerseyDataset(QuiltDataset):
@@ -29,6 +30,35 @@ class BasketballJerseyDataset(QuiltDataset):
             force=force,
             cache=cache
         )
+
+    @classmethod
+    def deserialize(cls, parsed: ParsedDataset) -> 'BasketballJerseyDataset':
+        r"""
+
+        Parameters
+        ----------
+        parsed
+
+        Returns
+        -------
+
+        """
+        if parsed.pop('user') != cls.user:
+            raise RuntimeError()
+        if parsed.pop('package') != cls.package:
+            raise RuntimeError()
+
+        hash_key = parsed.pop('hash_key')
+
+        df = pd.DataFrame.from_dict(parsed)
+        df = df.reset_index(drop=True)
+        df.index = df.index.astype(int)
+
+        ds = BaseDataset(name=cls.package, df=df)
+        ds.__class__ = BasketballJerseyDataset
+        ds: BasketballJerseyDataset
+        ds.hash_key = hash_key
+        return ds
 
     def unique_labels(
             self,

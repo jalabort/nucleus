@@ -259,6 +259,12 @@ class BaseDataset(Serializable):
         for index in range(len(self)):
             yield self[index]
 
+    # def convert_to_tfrecords(self, parallel: bool = True):
+    #
+    #     if parallel:
+    #
+    #     else:
+
     # TODO: Allow images to be gzip compressed?
     def upload_images_to_s3(
             self,

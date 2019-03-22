@@ -171,7 +171,7 @@ class Image(Serializable):
             contents = urlopen(path).read()
 
         return cls.from_hwc(
-            chw=tf.image.decode_image(contents=contents),
+            hwc=tf.image.decode_image(contents=contents),
             labels=labels,
             box_collection=box_collection
         )
@@ -179,7 +179,7 @@ class Image(Serializable):
     @classmethod
     def from_hwc(
             cls,
-            chw: Union[tf.Tensor, np.ndarray],
+            hwc: Union[tf.Tensor, np.ndarray],
             labels: List[str] = None,
             box_collection: Optional[Union[List[Box], BoxCollection]] = None
     )-> 'Image':
@@ -187,7 +187,7 @@ class Image(Serializable):
 
         Parameters
         ----------
-        chw
+        hwc
         labels
         box_collection
 
@@ -196,7 +196,7 @@ class Image(Serializable):
 
         """
         return cls(
-            chw=hwc_to_chw(chw),
+            chw=hwc_to_chw(hwc),
             labels=labels,
             box_collection=box_collection
         )

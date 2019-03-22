@@ -45,12 +45,12 @@ class Serializable(abc.ABC):
         """
         path = pathlib.Path(path)
 
-        if not path.exists():
-            tentative_path = path.parent / '.'.join([path.stem, 'json'])
+        if not path.exists() or path.suffix != '.json':
+            tentative_path = path.parent / f'{path.stem}.json'
             if tentative_path.exists():
                 path = tentative_path
             else:
-                tentative_path = path.parent / '.'.join([path.stem, 'json.gz'])
+                tentative_path = path.parent / f'{path.stem}.json.gz'
                 if tentative_path.exists():
                     path = tentative_path
 
