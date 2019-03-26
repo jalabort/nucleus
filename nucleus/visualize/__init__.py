@@ -1,5 +1,5 @@
 from .color_maps import (
-    BasketballDetectionLabelColorMap, BasketballJerseyLabelColorMap
+    BasketballDetectionsLabelColorMap, BasketballJerseysLabelColorMap
 )
 from .matplotlib import (
     MatplotlibImageViewer as ImageViewer,

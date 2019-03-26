@@ -1,18 +1,24 @@
-from typing import Optional, Union, List
-
+from typing import Optional, Union, List, Dict
 
 import pathlib
 import numpy as np
 import pandas as pd
 
-from nucleus.dataset import DatasetKeys
-from nucleus.types import ParsedDataset
-
-from .base import BaseDataset, QuiltDataset
+from .base import QuiltDataset
+from .keys import DatasetKeys
 
 
-class BasketballJerseyDataset(QuiltDataset):
+__all__ = ['BasketballJerseysDataset']
+
+
+class BasketballJerseysDataset(QuiltDataset):
     r"""
+
+    Parameters
+    ----------
+    hash_key
+    force
+    cache
     """
     user = 'hudlrd'
     package = 'basketball_jerseys'
@@ -23,42 +29,13 @@ class BasketballJerseyDataset(QuiltDataset):
             force: Optional[bool] = True,
             cache: Union[str, pathlib.Path] = './dataset_cache',
     ) -> None:
-        super(BasketballJerseyDataset, self).__init__(
+        super(BasketballJerseysDataset, self).__init__(
             user=self.user,
             package=self.package,
             hash_key=hash_key,
             force=force,
             cache=cache
         )
-
-    @classmethod
-    def deserialize(cls, parsed: ParsedDataset) -> 'BasketballJerseyDataset':
-        r"""
-
-        Parameters
-        ----------
-        parsed
-
-        Returns
-        -------
-
-        """
-        if parsed.pop('user') != cls.user:
-            raise RuntimeError()
-        if parsed.pop('package') != cls.package:
-            raise RuntimeError()
-
-        hash_key = parsed.pop('hash_key')
-
-        df = pd.DataFrame.from_dict(parsed)
-        df = df.reset_index(drop=True)
-        df.index = df.index.astype(int)
-
-        ds = BaseDataset(name=cls.package, df=df)
-        ds.__class__ = BasketballJerseyDataset
-        ds: BasketballJerseyDataset
-        ds.hash_key = hash_key
-        return ds
 
     def unique_labels(
             self,
@@ -88,19 +65,31 @@ class BasketballJerseyDataset(QuiltDataset):
 
     def create_label_count_df(
             self,
+            df: Optional[pd.DataFrame] = None,
             label_position: Optional[Union[int, List[int]]] = None
     ) -> List[pd.DataFrame]:
         r"""
+
+        Parameters
+        ----------
+        df
+        label_position
 
         Returns
         -------
 
         """
+
+        if df is None:
+            df = self.df
+
         if label_position is None:
-            label_position = range(len(self.df[DatasetKeys.LABELS.value][0]))
+            label_position = range(len(df[DatasetKeys.LABELS.value][0]))
+        elif isinstance(label_position, int):
+            label_position = [label_position]
 
         labels_dict = {}
-        for labels in self.df[DatasetKeys.LABELS.value]:
+        for labels in df[DatasetKeys.LABELS.value]:
             for i, label in enumerate(np.asanyarray(labels)[label_position]):
                 if label is None:
                     continue
@@ -114,7 +103,7 @@ class BasketballJerseyDataset(QuiltDataset):
                         labels_dict[i][label] += 1
 
         dfs = []
-        for i in label_position:
+        for i in range(len(label_position)):
             data = sorted(labels_dict[i].items())
             df = pd.DataFrame.from_records(
                 data=data,
@@ -127,11 +116,19 @@ class BasketballJerseyDataset(QuiltDataset):
     # TODO: Move viewing code to visualization
     def view_labels_distributions(
             self,
+            df: Optional[pd.DataFrame] = None,
             label_position: Optional[Union[int, List[int]]] = None,
             vertical: bool = False,
             return_charts: bool = False
     ) -> Optional[List[object]]:
         r"""
+
+        Parameters
+        ----------
+        df
+        label_position
+        vertical
+        return_charts
 
         Returns
         -------
@@ -145,10 +142,20 @@ class BasketballJerseyDataset(QuiltDataset):
             x, y = y, x
 
         charts = []
-        for df in self.create_label_count_df(label_position=label_position):
+        for df in self.create_label_count_df(df=df, label_position=label_position):
             chart = alt.Chart(df).mark_bar().encode(x=x, y=y)
             chart.display()
             charts.append(chart)
 
         if return_charts:
             return charts
+
+    def view_row(self, index: int, image_args: Dict = None):
+        if image_args is None:
+            from nucleus.visualize import BasketballJerseysLabelColorMap
+            image_args = dict(
+                box_args=dict(
+                    label_color_map=BasketballJerseysLabelColorMap
+                )
+            )
+        super(QuiltDataset, self).view_row(index=index, image_args=image_args)

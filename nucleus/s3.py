@@ -19,7 +19,7 @@ def parse_s3_url(url: str) -> List[Optional[str]]:
     Returns
     -------
     bucket_name
-    key
+    keys
     region
     """
     bucket = None

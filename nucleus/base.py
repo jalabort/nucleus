@@ -1,4 +1,4 @@
-from typing import Union, List, Iterable, Sequence, Dict
+from typing import Union, List, Iterable, Sequence
 
 import abc
 import json
@@ -8,8 +8,10 @@ import warnings
 import functools
 import collections
 
+from nucleus.types import Parsed
 
-Parsed = Union[List, Dict]
+
+__all__ = ['Serializable', 'LazyList']
 
 
 class Serializable(abc.ABC):

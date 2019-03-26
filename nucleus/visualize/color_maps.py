@@ -1,7 +1,13 @@
 import enum
 
 
-class BasketballDetectionLabelColorMap(enum.Enum):
+__all__ = [
+    'BasketballDetectionsLabelColorMap',
+    'BasketballJerseysLabelColorMap'
+]
+
+
+class BasketballDetectionsLabelColorMap(enum.Enum):
     UNKNOWN = 'black'
     PLAYER = 'blue'
     REFEREE = 'green'
@@ -9,7 +15,7 @@ class BasketballDetectionLabelColorMap(enum.Enum):
     SUBSTITUTE = 'violet'
 
 
-class BasketballJerseyLabelColorMap(enum.Enum):
+class BasketballJerseysLabelColorMap(enum.Enum):
     UNKNOWN = 'black'
     OCCLUDED = 'blue'
     PARTIAL = 'green'

@@ -1,4 +1,4 @@
-from typing import Union, Optional, List, Iterable, Dict
+from typing import Union, Optional, List, Iterable
 
 import warnings
 import numpy as np
@@ -10,10 +10,7 @@ from nucleus.types import (
     Num, ParsedBox, Coords, CoordsTensor, ParsedBoxCollection
 )
 
-from .functions import (
-    ijhw_to_yx, ijhw_to_yxhw, ijhw_to_kl, ijhw_to_ijkl,
-    yxhw_to_ijhw, ijkl_to_ijhw, swap_axes_order
-)
+from . import tools as box_tools
 
 
 __all__ = ['Box', 'BoxCollection']
@@ -97,7 +94,11 @@ class Box(Serializable):
         -------
 
         """
-        return cls(ijhw=yxhw_to_ijhw(yxhw), labels=labels, scores=scores)
+        return cls(
+            ijhw=box_tools.yxhw_to_ijhw(yxhw),
+            labels=labels,
+            scores=scores
+        )
 
     @classmethod
     def from_ijkl(
@@ -118,7 +119,11 @@ class Box(Serializable):
         -------
 
         """
-        return cls(ijhw=ijkl_to_ijhw(ijkl), labels=labels, scores=scores)
+        return cls(
+            ijhw=box_tools.ijkl_to_ijhw(ijkl),
+            labels=labels,
+            scores=scores
+        )
 
     @classmethod
     def from_xywh(
@@ -139,7 +144,11 @@ class Box(Serializable):
         -------
 
         """
-        return cls(ijhw=swap_axes_order(xywh), labels=labels, scores=scores)
+        return cls(
+            ijhw=box_tools.swap_axes_order(xywh),
+            labels=labels,
+            scores=scores
+        )
 
     @property
     def i(self) -> tf.Tensor:
@@ -209,7 +218,7 @@ class Box(Serializable):
         -------
 
         """
-        return ijhw_to_kl(self.ijhw)
+        return box_tools.ijhw_to_kl(self.ijhw)
 
     @property
     def yx(self) -> tf.Tensor:
@@ -219,7 +228,7 @@ class Box(Serializable):
         -------
 
         """
-        return ijhw_to_yx(self.ijhw)
+        return box_tools.ijhw_to_yx(self.ijhw)
 
     @property
     def ijkl(self):
@@ -229,7 +238,7 @@ class Box(Serializable):
         -------
 
         """
-        return ijhw_to_ijkl(self.ijhw)
+        return box_tools.ijhw_to_ijkl(self.ijhw)
 
     @property
     def yxhw(self):
@@ -239,7 +248,7 @@ class Box(Serializable):
         -------
 
         """
-        return ijhw_to_yxhw(self.ijhw)
+        return box_tools.ijhw_to_yxhw(self.ijhw)
 
     def area(self) -> float:
         r"""
@@ -414,7 +423,7 @@ class BoxCollection(Serializable):
 
         """
         return cls(
-            ijhw_tensor=yxhw_to_ijhw(yxhw_tensor),
+            ijhw_tensor=box_tools.yxhw_to_ijhw(yxhw_tensor),
             labels_list=labels_list,
             scores_list=scores_list,
         )
@@ -439,7 +448,7 @@ class BoxCollection(Serializable):
 
         """
         return cls(
-            ijhw_tensor=ijkl_to_ijhw(ijkl_tensor),
+            ijhw_tensor=box_tools.ijkl_to_ijhw(ijkl_tensor),
             labels_list=labels_list,
             scores_list=scores_list,
         )
@@ -463,8 +472,32 @@ class BoxCollection(Serializable):
         )
 
     @property
-    def labels(self) -> Iterable[str]:
-        return np.unique(self.labels_list).tolist()
+    def unique_labels(self) -> List[str]:
+        r"""
+        """
+        return list(np.unique(self.labels_list).tolist())
+
+    def labels_list_as_int_tensor(
+            self,
+            unique_labels: Optional[List[str]] = None
+    ) -> List[List[int]]:
+        r"""
+
+        Parameters
+        ----------
+        unique_labels
+
+        Returns
+        -------
+
+        """
+        if unique_labels is None:
+            unique_labels = self.unique_labels
+
+        return [
+            [unique_labels.index(label) for label in labels]
+            for labels in self.labels_list
+        ]
 
     @property
     def i_tensor(self) -> tf.Tensor:
@@ -534,7 +567,7 @@ class BoxCollection(Serializable):
         -------
 
         """
-        return ijhw_to_kl(self.ijhw_tensor)
+        return box_tools.ijhw_to_kl(self.ijhw_tensor)
 
     @property
     def yx_tensor(self) -> tf.Tensor:
@@ -544,7 +577,7 @@ class BoxCollection(Serializable):
         -------
 
         """
-        return ijhw_to_yx(self.ijhw_tensor)
+        return box_tools.ijhw_to_yx(self.ijhw_tensor)
 
     @property
     def ijkl_tensor(self) -> tf.Tensor:
@@ -554,7 +587,7 @@ class BoxCollection(Serializable):
         -------
 
         """
-        return ijhw_to_ijkl(self.ijhw_tensor)
+        return box_tools.ijhw_to_ijkl(self.ijhw_tensor)
 
     @property
     def yxhw_tensor(self) -> tf.Tensor:
@@ -564,7 +597,7 @@ class BoxCollection(Serializable):
         -------
 
         """
-        return ijhw_to_yxhw(self.ijhw_tensor)
+        return box_tools.ijhw_to_yxhw(self.ijhw_tensor)
 
     def boxes(self) -> Iterable[Box]:
         r"""
@@ -592,6 +625,7 @@ class BoxCollection(Serializable):
             keepdims=True
         )
 
+    # TODO: Not sure how useful this would be...
     def intersection_box_collection(
             self,
             box_collection: 'BoxCollection',
@@ -606,26 +640,29 @@ class BoxCollection(Serializable):
         -------
 
         """
-        i_tensor = tf.maximum(self.i_tensor, box_collection.i_tensor)
-        j_tensor = tf.maximum(self.j_tensor, box_collection.j_tensor)
-        h_tensor = tf.maximum(
-            0.0,
-            tf.minimum(
-                self.i_tensor + self.h_tensor,
-                box_collection.i_tensor + box_collection.h_tensor
-            ) - i_tensor
-        )
-        w_tensor = tf.maximum(
-            0.0,
-            tf.minimum(
-                self.j_tensor + self.w_tensor,
-                box_collection.j_tensor + box_collection.w_tensor
-            ) - j_tensor
-        )
+        raise NotImplemented()
 
-        return self.__class__(
-            tf.concat([i_tensor, j_tensor, h_tensor, w_tensor])
+    def _matched_up_operations(
+            self,
+            ijhw_tensor_other,
+            operation: callable
+    ) -> tf.Tensor:
+        r"""
+
+        Parameters
+        ----------
+        ijhw_tensor_other
+        operation
+
+        Returns
+        -------
+
+        """
+        matched_up_self, matched_up_other = box_tools.match_up_tensors(
+            tensor_a=self.ijhw_tensor,
+            tensor_b=ijhw_tensor_other
         )
+        return operation(matched_up_self, matched_up_other)
 
     def intersection_tensor(self, box_collection: 'BoxCollection') -> tf.Tensor:
         r"""
@@ -638,7 +675,10 @@ class BoxCollection(Serializable):
         -------
 
         """
-        return self.intersection_box_collection(box_collection).area_tensor()
+        return self._matched_up_operations(
+            ijhw_tensor_other=box_collection.ijhw_tensor,
+            operation=box_tools.calculate_intersections
+        )
 
     def union_tensor(self, box_collection: 'BoxCollection') -> tf.Tensor:
         r"""
@@ -651,10 +691,9 @@ class BoxCollection(Serializable):
         -------
 
         """
-        return (
-                self.area_tensor() +
-                box_collection.area_tensor() -
-                self.intersection_tensor(box_collection)
+        return self._matched_up_operations(
+            ijhw_tensor_other=box_collection.ijhw_tensor,
+            operation=box_tools.calculate_unions
         )
 
     def iou_tensor(self, box_collection: 'BoxCollection') -> tf.Tensor:
@@ -668,11 +707,10 @@ class BoxCollection(Serializable):
         -------
 
         """
-        intersection = self.intersection_tensor(box_collection)
-        union = self.area_tensor() + box_collection.area_tensor() - intersection
-        iou = intersection / union
-        iou[np.isinf(iou)] = 0
-        return iou
+        return self._matched_up_operations(
+            ijhw_tensor_other=box_collection.ijhw_tensor,
+            operation=box_tools.calculate_ious
+        )
 
     def __str__(self) -> str:
         r"""
@@ -682,6 +720,9 @@ class BoxCollection(Serializable):
 
         """
         raise NotImplemented()
+
+    def __len__(self):
+        return len(self.ijhw_tensor)
 
     def view(
             self,

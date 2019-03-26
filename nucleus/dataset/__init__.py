@@ -1,4 +1,5 @@
+from .base import *
+from .detections import *
+from .jerseys import *
 from .keys import *
-# from .base import *
 from .tools import *
-from .datasets import *

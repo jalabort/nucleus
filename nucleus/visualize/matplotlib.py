@@ -360,7 +360,7 @@ class MatplotlibBoxViewer(MatplotlibRenderer):
     ):
         from matplotlib import patches, patheffects
         import matplotlib.pyplot as plt
-        from nucleus.box import ijhw_to_ijkl, scale_coords
+        from nucleus.box import tools as box_tools
 
         if skip_labels and all(label in skip_labels for label in self.labels):
             return self
@@ -376,9 +376,9 @@ class MatplotlibBoxViewer(MatplotlibRenderer):
             caption_edge_color = color
             caption_face_color = color
 
-        ijhw = scale_coords(coords=self.ijhw, resolution=resolution)
+        ijhw = box_tools.scale_coords(coords=self.ijhw, resolution=resolution)
 
-        ijkl = ijhw_to_ijkl(ijhw)
+        ijkl = box_tools.ijhw_to_ijkl(ijhw)
 
         # parse axes limits1)
         min_x, min_y = np.minimum(ijkl[:2], (0, 0))

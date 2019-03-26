@@ -12,13 +12,15 @@ import PIL.Image as PilImage
 from nucleus.box import Box, BoxCollection
 
 from nucleus.base import Serializable
-from nucleus.dataset import DatasetKeys
 from nucleus.visualize import ImageViewer
 # TODO: Use python-aws
 from nucleus.s3 import is_s3_path, get_signed_s3_url
 from nucleus.types import ParsedImage
 
-from .functions import chw_to_hwc, hwc_to_chw, crop_chw
+from . import tools as img_tools
+
+
+__all__ = ['Image']
 
 
 class Image(Serializable):
@@ -40,6 +42,7 @@ class Image(Serializable):
             chw: Union[tf.Tensor, np.ndarray],
             labels: Optional[Union[List[str], str]] = None,
             box_collection: Optional[Union[List[Box], BoxCollection]] = None,
+            dtype: Optional[tf.DType] = tf.float32
     ) -> None:
 
         if chw.ndim < 2:
@@ -53,6 +56,8 @@ class Image(Serializable):
             chw = tf.convert_to_tensor(chw)
         if chw.ndim == 2:
             chw = chw[None]
+        if dtype is not None:
+            chw = tf.cast(chw, dtype=dtype)
 
         self.chw = chw
         self.labels = labels if not isinstance(labels, str) else [labels]
@@ -75,7 +80,7 @@ class Image(Serializable):
         -------
 
         """
-        box_collection = parsed.get(DatasetKeys.BOXES.value)
+        box_collection = parsed.get('boxes')
         if box_collection is not None:
             box_collection = BoxCollection.deserialize(parsed=box_collection)
 
@@ -135,7 +140,7 @@ class Image(Serializable):
         if not path.exists() or rewrite:
             parsed = self.serialize(path=path)
             # TODO: Use tensorflow here?
-            pil_image = PilImage.fromarray(self.np_hwc())
+            pil_image = PilImage.fromarray(tf.cast(self.hwc, tf.uint8).numpy())
             pil_image.save(path)
 
             self._save(
@@ -196,7 +201,7 @@ class Image(Serializable):
 
         """
         return cls(
-            chw=hwc_to_chw(hwc),
+            chw=img_tools.hwc_to_chw(hwc),
             labels=labels,
             box_collection=box_collection
         )
@@ -289,37 +294,31 @@ class Image(Serializable):
         -------
 
         """
-        return chw_to_hwc(self.chw)
+        return img_tools.chw_to_hwc(self.chw)
 
-    def np_chw(self) -> tf.Tensor:
+    def bytes(self, image_format: str = 'png', **kwargs) -> bytes:
         r"""
 
         Returns
         -------
 
         """
-        return self.chw.numpy()
+        if image_format == 'png':
+            encoded = tf.image.encode_png(
+                tf.cast(self.hwc, dtype=tf.uint8), **kwargs
+            )
+        elif image_format == 'jpeg':
+            encoded = tf.image.encode_jpeg(
+                tf.cast(self.hwc, dtype=tf.uint8), **kwargs
+            )
+        else:
+            raise ValueError()
 
-    def np_hwc(self) -> tf.Tensor:
-        r"""
+        return encoded.numpy()
 
-        Returns
-        -------
-
-        """
-        return self.hwc.numpy()
-
-    def bytes(self, image_format: str = 'png') -> bytes:
-        r"""
-
-        Returns
-        -------
-
-        """
-        pil_image = PilImage.fromarray(self.np_hwc())
-        byte_array = io.BytesIO()
-        pil_image.save(byte_array, format=image_format)
-        return byte_array.getvalue()
+    @property
+    def labels_tensor(self) -> tf.Tensor:
+        return tf.convert_to_tensor(self.labels)
 
     def images_from_box_collection(
             self,
@@ -339,7 +338,10 @@ class Image(Serializable):
             skip_labels = [skip_labels]
 
         return [
-            Image(chw=crop_chw(self.chw, box.ijhw), labels=box.labels)
+            Image(
+                chw=img_tools.crop_chw(self.chw, box.ijhw),
+                labels=box.labels
+            )
             for box in self.box_collection.boxes()
             if skip_labels is None or (
                 all(label not in skip_labels for label in box.labels)
@@ -362,25 +364,122 @@ class Image(Serializable):
 
     def view(
             self,
-            figure_id=None,
-            new_figure=False,
-            box_args: Union[Dict] = None,
+            view_boxes: bool = True,
+            figure_id: int = None,
+            new_figure: bool = False,
             **kwargs,
     ) -> None:
+        r"""
+
+        Parameters
+        ----------
+        view_boxes
+        figure_id
+        new_figure
+        kwargs
+
+        Returns
+        -------
+
+        """
+        if kwargs.get('box_args'):
+            box_args = kwargs.pop('box_args')
+        else:
+            box_args = {}
+
         ImageViewer(
             figure_id=figure_id,
             new_figure=new_figure,
-            pixels=self.hwc,
+            pixels=tf.cast(self.hwc, dtype=tf.uint8),
             labels=self.labels
         ).render(**kwargs)
 
-        if box_args is None:
-            box_args = {}
-
-        box_args['resolution'] = self.resolution
-        if self.box_collection:
+        if view_boxes and self.box_collection:
+            box_args['resolution'] = self.resolution
             self.box_collection.view(
                 figure_id=figure_id,
                 new_figure=new_figure,
                 **box_args
             )
+
+    def view_with_grid(
+            self,
+            grid_shape: Tuple[int, int],
+            grid_color: str = 'red',
+            view_boxes: bool = False,
+            mask: tf.Tensor = None,
+            figure_id=None,
+            new_figure=False,
+            **kwargs,
+    ) -> None:
+        r"""
+
+        Parameters
+        ----------
+        grid_shape
+        grid_color
+        view_boxes
+        mask
+        figure_id
+        new_figure
+        kwargs
+
+        Returns
+        -------
+
+        """
+        self.view(
+            view_boxes=view_boxes,
+            figure_id=figure_id,
+            new_figure=new_figure,
+            **kwargs
+        )
+
+        cells = self._create_cells(grid_shape=grid_shape).numpy()
+
+        # TODO: This code belongs in visualization
+        import matplotlib.pyplot as plt
+        from matplotlib import patches
+        ax = plt.gca()
+
+        if mask is None:
+            for cell in cells:
+                rect = patches.Rectangle(
+                    cell[:2][::-1],
+                    *cell[-2:][::-1],
+                    fill=False,
+                    alpha=0.5,
+                    edgecolor=grid_color,
+                    linewidth=2
+                )
+                ax.add_patch(rect)
+        else:
+            mask = tf.reshape(tf.transpose(mask, [1, 0]), (-1,))
+            for cell, m in zip(cells, mask):
+                rect = patches.Rectangle(
+                    cell[:2][::-1],
+                    *cell[-2:][::-1],
+                    fill=False if not m else True,
+                    alpha=0.5,
+                    facecolor=grid_color,
+                    edgecolor=grid_color,
+                    linewidth=2
+                )
+                ax.add_patch(rect)
+
+    def _create_cells(self, grid_shape: Tuple[int, int]) -> tf.Tensor:
+        grid_h, grid_w = grid_shape
+        img_h, img_w = self.resolution
+
+        cell_h = img_h / grid_h
+        cell_w = img_w / grid_w
+
+        ys, xs = tf.meshgrid(tf.range(grid_h + 0.), tf.range(grid_w + 0.))
+        ys *= cell_h
+        xs *= cell_w
+
+        hs = cell_h * tf.ones_like(input=ys)
+        ws = cell_w * tf.ones_like(input=xs)
+
+        cells = tf.stack([ys, xs, hs, ws], axis=-1)
+        return tf.reshape(cells, shape=(-1, 4))

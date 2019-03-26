@@ -1,10 +1,10 @@
-from typing import Optional, Union, Iterable, Dict
+from typing import Optional, Union, List, Iterable, Dict
 
+import re
 import json
 import boto3
 import warnings
 import pandas as pd
-
 from concurrent.futures import ThreadPoolExecutor
 
 from hudl_aws.s3 import read_from_s3
@@ -25,13 +25,14 @@ __all__ = [
 ]
 
 
-def get_job_keys(bucket: str, key: str) -> Iterable[str]:
+def get_job_keys(bucket: str, key: str, pattern: str) -> Iterable[str]:
     r"""
 
     Parameters
     ----------
     bucket
     key
+    pattern
 
     Returns
     -------
@@ -40,16 +41,21 @@ def get_job_keys(bucket: str, key: str) -> Iterable[str]:
     s3_client = boto3.client('s3')
     paginator = s3_client.get_paginator('list_objects')
 
+    regex = re.compile(key + pattern)
+
     for result in paginator.paginate(Bucket=bucket, Prefix=key):
         for contents in result.get('Contents'):
             key_path = contents.get('Key')
-            yield key_path
+            match = re.search(regex, key_path)
+            if match is not None:
+                yield key_path
 
 
 # TODO: Revisit parallel path flow, very memory intensive atm
 def get_jobs(
         bucket: str,
         key: str,
+        pattern: str,
         n_jobs: Optional[int] = None,
         parallel: bool = True,
         show_progress: bool = False
@@ -60,6 +66,7 @@ def get_jobs(
     ----------
     bucket
     key
+    pattern
     n_jobs
     parallel
     show_progress
@@ -68,7 +75,7 @@ def get_jobs(
     -------
 
     """
-    keys = list(get_job_keys(bucket=bucket, key=key))[:n_jobs]
+    keys = list(get_job_keys(bucket=bucket, key=key, pattern=pattern))[:n_jobs]
 
     if parallel:
         return _get_jobs_parallel(bucket, keys, show_progress)
@@ -89,8 +96,8 @@ def _get_jobs_parallel(bucket, keys, show_progress):
     -------
 
     """
-    def _load(k):
-        return json.load(read_from_s3(bucket, k))
+    def _load(key):
+        return json.load(read_from_s3(bucket, key))
 
     with ThreadPoolExecutor() as executor:
         threads = executor.map(_load, keys)
@@ -179,7 +186,8 @@ def create_examples_from_jobs(
 
 def create_df_from_s3(
         bucket: str,
-        key: str,
+        key: Union[List[str], str],
+        pattern: str,
         n_jobs: Optional[int] = None,
         parallel: bool = True,
         show_progress: bool = False
@@ -190,6 +198,7 @@ def create_df_from_s3(
     ----------
     bucket
     key
+    pattern
     n_jobs
     parallel
     show_progress
@@ -198,13 +207,17 @@ def create_df_from_s3(
     -------
 
     """
-    jobs = get_jobs(
-        bucket=bucket,
-        key=key,
-        n_jobs=n_jobs,
-        parallel=parallel,
-        show_progress=show_progress
-    )
-    examples = create_examples_from_jobs(jobs)
-    df = create_df_from_examples(examples)
-    return df
+    all_jobs = []
+    for key in progress_bar(key):
+        jobs = get_jobs(
+            bucket=bucket,
+            key=key,
+            pattern=pattern,
+            n_jobs=n_jobs,
+            parallel=parallel,
+            show_progress=show_progress
+        )
+        all_jobs += jobs
+
+    examples = create_examples_from_jobs(all_jobs)
+    return create_df_from_examples(examples)
