@@ -1,0 +1,5 @@
+name: nucleus_env
+dependencies:
+  - conda-forge::jupyter_contrib_nbextensions==0.5.1
+  - pip:
+    - jupyter==1.0.0
