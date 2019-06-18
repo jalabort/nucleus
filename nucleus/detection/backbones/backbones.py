@@ -3,7 +3,7 @@ from typing import Optional
 from tensorflow.python.keras import Sequential
 from tensorflow.python.keras.layers import MaxPool2D
 
-from .layers import DarkNetConv, DarkNetBlock
+from detection.layers import DarkNetConv, DarkNetBlock
 
 
 # TODO: Make modules Sequential models

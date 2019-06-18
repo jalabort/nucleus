@@ -1,12 +1,12 @@
 from typing import Optional, Union, List, Dict
 
-import pathlib
 import tensorflow as tf
+from pathlib import Path
+from public import public
 
 from nucleus.image import Image
 from nucleus.box import tools as box_tools
 from nucleus.types import ParsedDataset
-from nucleus.utils import export
 
 from .base import QuiltDataset
 from .keys import DatasetKeys
@@ -14,7 +14,7 @@ from .encode import _bytes_feature, _int64_feature
 
 
 # TODO: Rethink this class
-@export
+@public
 class BasketballDetectionsDataset(QuiltDataset):
     r"""
 
@@ -31,7 +31,7 @@ class BasketballDetectionsDataset(QuiltDataset):
             self,
             hash_key: Optional[str] = None,
             force: Optional[bool] = True,
-            cache: Union[str, pathlib.Path] = './dataset_cache',
+            cache: Union[str, Path] = './dataset_cache',
             max_serialized_boxes: int = 50
     ) -> None:
         super().__init__(
@@ -159,7 +159,7 @@ class BasketballDetectionsDataset(QuiltDataset):
 
         # labels_length = tf.cast(example['labels/length'], tf.int32)
         # labels = tf.io.decode_raw(example['labels/encoded'], tf.float32)
-        # labels = tf.reshape(labels, tf.stack([labels_length]))
+        # labels = tf.reshape(labels, tf.stack([labels_length])
 
         n_boxes = tf.cast(example['boxes/n_boxes'], tf.int32)
         boxes = tf.io.decode_raw(example['boxes/encoded'], tf.float32)

@@ -1,13 +1,12 @@
-import numpy as np
 import tensorflow as tf
+from public import public
 
-from nucleus.box import tools as box_tools
-from nucleus.utils import export, name_scope
+from nucleus.box import scale_coords, ijhw_to_ijkl
+from nucleus.utils import name_scope
 
 
-@export
+@public
 @name_scope
-@tf.function
 def hwc_to_chw(hwc: tf.Tensor) -> tf.Tensor:
     r"""
 
@@ -30,9 +29,8 @@ def hwc_to_chw(hwc: tf.Tensor) -> tf.Tensor:
     return chw
 
 
-@export
+@public
 @name_scope
-@tf.function
 def chw_to_hwc(chw: tf.Tensor) -> tf.Tensor:
     r"""
 
@@ -55,10 +53,9 @@ def chw_to_hwc(chw: tf.Tensor) -> tf.Tensor:
     return hwc
 
 
-@export
+@public
 @name_scope
-@tf.function
-def crop_chw(chw: np.ndarray, ijhw: np.array) -> np.ndarray:
+def crop_chw(chw: tf.Tensor, ijhw: tf.Tensor) -> tf.Tensor:
     r"""
 
     Parameters
@@ -70,7 +67,7 @@ def crop_chw(chw: np.ndarray, ijhw: np.array) -> np.ndarray:
     -------
 
     """
-    ijhw = box_tools.scale_coords(ijhw, chw.shape[-2:])
-    ijkl = box_tools.ijhw_to_ijkl(ijhw)
+    ijhw = scale_coords(ijhw, chw.shape[-2:])
+    ijkl = ijhw_to_ijkl(ijhw)
     ijkl = tf.cast(ijkl, dtype=tf.int32)
     return chw[..., ijkl[0]:ijkl[2], ijkl[1]:ijkl[3]]

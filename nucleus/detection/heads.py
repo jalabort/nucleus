@@ -1,19 +1,29 @@
-from typing import Optional, Union
+from typing import Optional, Union, Sequence
 
-from tensorflow.python.keras import Model, Sequential
-from tensorflow.python.keras.layers import (
-    Input, Conv2D, Reshape, Concatenate, Activation
-)
+import tensorflow as tf
+from tensorflow.python.keras.utils import conv_utils
+
+from nucleus.utils import export
+
+from .data_format import feature_map_shape, get_prediction_tensor_shape
 
 
+# TODO: Define
+@export
+def create_ssd_head(): pass
+
+
+# TODO: Should this be a subclass of BaseModel?
+@export
 def create_yolo_head(
+        feature_map: tf.Tensor,
         n_classes: int,
         n_anchors: int,
-        n_features: int = 1024,
-        n_layers: int = 3,
-        cls_activation: Union[str, callable] = 'sigmoid',
+        n_layers: int,
+        n_features: Union[int, Sequence[int]],
+        cls_activation: Union[str, callable],
         data_format: Optional[str] = None,
-) -> Model:
+) -> tf.keras.Model:
     r"""
     Creates the YOLO head as described in the original paper.
 
@@ -24,15 +34,17 @@ def create_yolo_head(
 
     Parameters
     ----------
+    feature_map
+        The feature map on top of which this detection head will be created.
     n_classes
         The number of classes to predict.
     n_anchors
         The number of anchors attached to each cell of the feature map that
         this subnet acts upon.
-    n_features
-        The number of channels produced by the intermediate feature layers.
     n_layers
         The number of intermediate feature layers.
+    n_features
+        The number of features produced by the intermediate feature layers.
     cls_activation
         The activation function used for the classes prediction. Typically,
         this is set to ``sigmoid`` or ``softmax``.
@@ -44,58 +56,102 @@ def create_yolo_head(
     -------
     The RetinaNet head model as described in the original paper.
     """
-    # Compute the number of predictions
-    n_predictions = 4 + 1 + n_classes
+    # Handle data_format appropriately
+    data_format = conv_utils.normalize_data_format(data_format)
+
+    n_classes += 1
 
     # Determine the expected inputs and outputs shape
-    if data_format is 'channels_last':
-        input_shape = (None, None, n_features)
-        output_shape = (None, None, n_anchors, n_predictions)
+    if data_format == 'channels_last':
+        batch_size, grid_height, grid_width, n_channels = feature_map.shape
+        input_shape = grid_height, grid_width, n_channels
     else:
-        input_shape = (n_features, None, None)
-        output_shape = (n_anchors, n_predictions, None, None)
+        batch_size, n_channels, grid_height, grid_width, = feature_map.shape
+        input_shape = n_channels, grid_height, grid_width
 
-    # Create the yolo subnet
-    yolo_subnet = _create_subnet(
-        name='yolo_subnet',
-        activation=None,
-        n_outputs=n_predictions * n_anchors,
-        n_features=n_features,
-        n_layers=n_layers,
-        data_format=data_format
+    # Create the input layer
+    inputs = tf.keras.layers.Input(shape=input_shape)
+
+    # Determine the number of features in each layer
+    if isinstance(n_features, int):
+        n_features = [n_features for _ in range(n_layers)]
+    elif isinstance(n_features, Sequence):
+        n_features = list(n_features)
+        assert len(n_features) == n_layers
+
+    # Define intermediate feature layers
+    x = inputs
+    for n_f in n_features:
+        x = tf.keras.layers.Conv2D(
+            filters=n_f,
+            kernel_size=3,
+            padding='same',
+            activation='relu',
+            kernel_initializer=tf.keras.initializers.he_normal(),
+            data_format=data_format,
+        )(x)
+
+    # Define final prediction layers
+    yxhw_output = tf.keras.layers.Conv2D(
+        filters=4 * n_anchors,
+        kernel_size=3,
+        padding='same',
+        data_format=data_format,
+    )(x)
+
+    obj_output = tf.keras.layers.Conv2D(
+        filters=2 * n_anchors,
+        padding='same',
+        kernel_size=3,
+        data_format=data_format,
+    )(x)
+
+    cls_output = tf.keras.layers.Conv2D(
+        filters=n_classes * n_anchors,
+        padding='same',
+        kernel_size=3,
+        data_format=data_format,
+    )(x)
+
+    # Split last dimension of outputs predictions in n_anchors x n_predictions
+    def _split(tensor: tf.Tensor):
+        return tf.stack([
+            t for t in tf.split(tensor, num_or_size_splits=n_anchors, axis=-1)
+        ], axis=-2)
+    yxhw_output = tf.keras.layers.Lambda(function=_split)(yxhw_output)
+    if data_format == 'channels_last':
+        yx_output = tf.keras.layers.Lambda(
+            function=lambda t: t[..., :2]
+        )(yxhw_output)
+        hw_output = tf.keras.layers.Lambda(
+            function=lambda t: t[..., 2:4]
+        )(yxhw_output)
+    else:
+        yx_output = tf.keras.layers.Lambda(
+            function=lambda t: t[:, :2]
+        )(yxhw_output)
+        hw_output = tf.keras.layers.Lambda(
+            function=lambda t: t[:, 2:4]
+        )(yxhw_output)
+    yx_output = tf.keras.layers.Activation(activation='sigmoid')(yx_output)
+
+    obj_output = tf.keras.layers.Lambda(function=_split)(obj_output)
+    obj_output = tf.keras.layers.Softmax()(obj_output)
+
+    cls_output = tf.keras.layers.Lambda(function=_split)(cls_output)
+    cls_output = tf.keras.layers.Activation(
+        activation=cls_activation
+    )(cls_output)
+
+    # Concatenate all outputs
+    outputs = tf.keras.layers.Concatenate(axis=-1)(
+        [yx_output, hw_output, obj_output, cls_output]
     )
 
-    # Define the inputs and outputs of the model
-    inputs = Input(shape=input_shape)
-    outputs = yolo_subnet(inputs)
-
-    # Reshape and concatenate outputs
-    outputs = Reshape(target_shape=output_shape)(outputs)
-    if data_format is 'channels_last':
-        yx_output = outputs[..., :2]
-        hw_output = outputs[..., 2:4]
-        obj_output = outputs[..., 4:5]
-        cls_output = outputs[..., 5:]
-    else:
-        yx_output = outputs[:2, ...]
-        hw_output = outputs[2:4, ...]
-        obj_output = outputs[4:5, ...]
-        cls_output = outputs[5:, ...]
-    yx_output = Activation(activation='sigmoid')(yx_output)
-    obj_output = Activation(activation='sigmoid')(obj_output)
-    cls_output = Activation(activation=cls_activation)(cls_output)
-    axis = -1 if data_format is 'channels_last' else 0
-    outputs = Concatenate(axis=axis, name='outputs')([
-        yx_output,
-        hw_output,
-        obj_output,
-        cls_output
-    ])
-
-    # Create the yolo head model
-    return Model(inputs=inputs, outputs=outputs, name='yolo_head')
+    return tf.keras.Model(inputs=inputs, outputs=outputs, name='yolo_head')
 
 
+@export
 def create_retina_net_head(
         n_classes: int,
         n_anchors: int,
@@ -103,7 +159,7 @@ def create_retina_net_head(
         n_layers: int = 4,
         cls_activation: Union[str, callable] = 'sigmoid',
         data_format: Optional[str] = None,
-) -> Model:
+) -> tf.keras.Model:
     r"""
     Creates the RetinaNet head as described in the original paper.
 
@@ -134,8 +190,11 @@ def create_retina_net_head(
     -------
     The RetinaNet head model as described in the original paper.
     """
+    # Handle data_format appropriately
+    data_format = conv_utils.normalize_data_format(data_format)
+
     # Determine the expected inputs and outputs shape
-    if data_format is 'channels_last':
+    if data_format == 'channels_last':
         input_shape = (None, None, n_features)
         reg_output_shape = (None, None, n_anchors, 4)
         cls_output_shape = (None, None, n_anchors, n_classes)
@@ -162,18 +221,31 @@ def create_retina_net_head(
     )
 
     # Create the retina net head
-    inputs = Input(shape=input_shape)
+    inputs = tf.keras.layers.Input(shape=input_shape)
     reg_output = reg_subnet(inputs)
     cls_output = cls_subnet(inputs)
 
     # Reshape and concatenate outputs
-    reg_output = Reshape(target_shape=reg_output_shape)(reg_output)
-    cls_output = Reshape(target_shape=cls_output_shape)(cls_output)
-    axis = -1 if data_format is 'channels_last' else 0
-    outputs = Concatenate(axis=axis, name='outputs')([reg_output, cls_output])
+    reg_output = tf.keras.layers.Reshape(
+        target_shape=reg_output_shape
+    )(reg_output)
+
+    cls_output = tf.keras.layers.Reshape(
+        target_shape=cls_output_shape
+    )(cls_output)
+
+    axis = -1 if data_format == 'channels_last' else 0
+    outputs = tf.keras.layers.Concatenate(axis=axis, name='outputs')([
+        reg_output,
+        cls_output
+    ])
 
     # Create the retina net head model
-    return Model(inputs=inputs, outputs=outputs, name='retina_net_head')
+    return tf.keras.Model(
+        inputs=inputs,
+        outputs=outputs,
+        name='retina_net_head'
+    )
 
 
 def _create_retina_net_reg_subnet(
@@ -181,7 +253,7 @@ def _create_retina_net_reg_subnet(
         n_features: int = 256,
         n_layers: int = 4,
         data_format: Optional[str] = None,
-) -> Sequential:
+) -> tf.keras.Sequential:
     r"""
     Creates the RetinaNet regression subnet as described in the original paper.
 
@@ -225,7 +297,7 @@ def _create_retina_net_cls_subnet(
         n_layers: int = 4,
         cls_activation: Union[str, callable] = 'sigmoid',
         data_format: Optional[str] = None,
-) -> Sequential:
+) -> tf.keras.Sequential:
     r"""
     Creates the RetinaNet classification subnet as described in the original
     paper.
@@ -275,15 +347,9 @@ def _create_subnet(
         n_features: int,
         n_layers: int,
         data_format: Optional[str] = None
-) -> Sequential:
+) -> tf.keras.Sequential:
     r"""
-    Auxiliary function used to create the regression and classification
-    RetinaNet subnets.
-
-    References
-    ----------
-    .. [1] Tsung-Yi Lin, et. al, "Focal Loss for Dense Object Detection",
-           ICCV 2017, https://arxiv.org/abs/1708.02002.
+    Auxiliary function used to create the regression and classification subnets.
 
     Parameters
     ----------
@@ -303,21 +369,24 @@ def _create_subnet(
 
     Returns
     -------
-    The RetinaNet subnet.
+    The subnet.
     """
+    # Handle data_format appropriately
+    data_format = conv_utils.normalize_data_format(data_format)
+
     # Determine the expected input shape
-    if data_format is 'channels_last':
+    if data_format == 'channels_last':
         input_shape = (None, None, n_features)
     else:
         input_shape = (n_features, None, None)
 
     # Create retina net subnet
-    return Sequential([
+    return tf.keras.Sequential([
         # Input layer
-        Input(shape=input_shape),
+        tf.keras.layers.Input(shape=input_shape),
 
         # Feature layers
-        *[Conv2D(
+        *[tf.keras.layers.Conv2D(
             filters=n_features,
             kernel_size=3,
             activation='relu',
@@ -325,7 +394,7 @@ def _create_subnet(
         ) for _ in range(n_layers)],
 
         # Prediction layer
-        Conv2D(
+        tf.keras.layers.Conv2D(
             filters=n_outputs,
             kernel_size=3,
             activation=activation,

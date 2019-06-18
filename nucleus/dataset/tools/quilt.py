@@ -1,14 +1,13 @@
 from typing import Optional, Iterable
 
 import quilt
-import tempfile
 import numpy as np
 import pandas as pd
+from public import public
+from tempfile import NamedTemporaryFile
 
-from nucleus.utils import export
 
-
-@export
+@public
 def get_pkg(
         user: str,
         package: str,
@@ -33,7 +32,7 @@ def get_pkg(
     return quilt.load(pkg_path)
 
 
-@export
+@public
 def decode_df_columns(
         df: pd.DataFrame,
         column_keys: Iterable
@@ -62,7 +61,7 @@ def decode_df_columns(
     return df
 
 
-@export
+@public
 def get_df(
         user: str,
         package: str,
@@ -91,7 +90,7 @@ def get_df(
     return df
 
 
-@export
+@public
 def update_pkg(
         df: pd.DataFrame,
         user: str,
@@ -129,10 +128,10 @@ def update_pkg(
 
     # TODO: warn the user if readme if not provided
     if readme is not None:
-        with tempfile.NamedTemporaryFile() as tmp:
+        with NamedTemporaryFile() as tmp:
             tmp.write(readme.encode('UTF-8'))
             tmp.flush()
-            quilt.build(f'{pkg_path}/README', tmp.name)
+            quilt.build(f'{pkg_path}/README', tmp.model_name)
 
     quilt.login()
     quilt.push(pkg_path, is_public=True, hash=hash_key)

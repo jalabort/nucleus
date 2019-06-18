@@ -6,6 +6,7 @@ setup(
     version='0.0.1',
     author='hudlrd',
     install_requires=[
+        'public==2019.4.13',
         'stringcase==1.2.0',
         'tqdm==4.31.1',
         'boto3==1.9.114',
@@ -20,13 +21,14 @@ setup(
         'quilt==2.9.15',
 
         'pandas==0.24.1',
+        'tensorflow-addons==0.3.1',
 
         # Hudl packages
-        'hudl-aws==0.2.1',
+        'hudl-aws==0.2.1'
     ],
     extras_require={
-        'cpu': ['tf-nightly-2.0-preview'],
-        'gpu': ['tf-nightly-gpu-2.0-preview'],
+        'cpu': ['tensorflow==2.0.0-beta1'],
+        'gpu': ['tensorflow-gpu==2.0.0-beta1']
     },
     test_require={
         'pytest',

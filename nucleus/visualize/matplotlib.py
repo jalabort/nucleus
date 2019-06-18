@@ -1,6 +1,5 @@
 from typing import Optional, List
 
-import enum
 import numpy as np
 import tensorflow as tf
 
@@ -198,12 +197,12 @@ class MatplotlibImageViewer(MatplotlibRenderer):
             caption = ''
             if len(labels) > 0 and len(scores) > 0:
                 caption = '\n'.join(
-                    f'{l} : {s}' for l, s in zip(labels, scores)
+                    f'{l} : {s:.2f}' for l, s in zip(labels, scores)
                 )
             elif len(labels) > 0:
                 caption = '\n'.join(f'{l}' for l in labels)
             elif len(scores) > 0:
-                caption = '\n'.join(f'{s}' for s in scores)
+                caption = '\n'.join(f'{s:.2f}' for s in scores)
 
             if caption != '':
                 ax.set_title(
@@ -220,7 +219,7 @@ class MatplotlibImageViewer(MatplotlibRenderer):
             axes_x_limits=axes_x_limits, axes_y_limits=axes_y_limits,
             axes_x_ticks=axes_x_ticks, axes_y_ticks=axes_y_ticks)
 
-        # set figure _size
+        # set figure size
         _set_figure_size(self.figure, figure_size)
 
         return self
@@ -424,12 +423,12 @@ class MatplotlibBoxViewer(MatplotlibRenderer):
             caption = ''
             if len(labels) > 0 and len(scores) > 0:
                 caption = '\n'.join(
-                    f'{l} : {s}' for l, s in zip(labels, scores)
+                    f'{l} : {s:.2f}' for l, s in zip(labels, scores)
                 )
             elif len(labels) > 0:
                 caption = '\n'.join(f'{l}' for l in labels)
             elif len(scores) > 0:
-                caption = '\n'.join(f'{s}' for s in scores)
+                caption = '\n'.join(f'{s:.2f}' for s in scores)
 
             if caption != '':
                 corrector = 0
@@ -461,7 +460,7 @@ class MatplotlibBoxViewer(MatplotlibRenderer):
         # set equal aspect ratio
         ax.set_aspect('equal', adjustable='box')
 
-        # set figure _size
+        # set figure size
         _set_figure_size(self.figure, figure_size)
 
         return self

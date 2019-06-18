@@ -1,10 +1,11 @@
 from typing import Optional, Union, Tuple, List, Dict
 
-import pathlib
-import warnings
 import numpy as np
 import pandas as pd
 import tensorflow as tf
+from pathlib import Path
+from public import public
+from warnings import warn
 from concurrent.futures import ThreadPoolExecutor
 
 from hudl_aws.s3 import write_to_s3, ContentType, S3Location
@@ -13,13 +14,13 @@ from nucleus.base import Serializable, LazyList
 from nucleus.image import Image
 from nucleus.box import Box
 from nucleus.types import ParsedDataset
-from nucleus.utils import export, progress_bar
+from nucleus.utils import progress_bar
 
 from .keys import DatasetKeys, DatasetListKeys, DatasetSplitKeys, DatasetPartitionKeys
 from .tools import vq as vq_tools, watson as watson_tools, quilt as quilt_tools
 
 
-@export
+@public
 class BaseDataset(Serializable):
     r"""
     Dataset base class.
@@ -42,7 +43,7 @@ class BaseDataset(Serializable):
             self,
             name: str,
             df: pd.DataFrame,
-            cache: Union[str, pathlib.Path] = './dataset_cache'
+            cache: Union[str, Path] = './dataset_cache'
     ) -> None:
         self.name = name
         self.df = df
@@ -69,8 +70,8 @@ class BaseDataset(Serializable):
         return self._cache
 
     @cache.setter
-    def cache(self, cache: Union[str, pathlib.Path]):
-        self._cache = pathlib.Path(cache).absolute()
+    def cache(self, cache: Union[str, Path]):
+        self._cache = Path(cache).absolute()
         self._cache_path = self.cache / self.name
         self.cache_path.mkdir(parents=True, exist_ok=True)
 
@@ -343,7 +344,7 @@ class BaseDataset(Serializable):
         row = self._get_row_from_index(index=index)
         image = self._create_image_from_row(row=row)
 
-        stem = pathlib.Path(row[DatasetKeys.PATH.value]).stem
+        stem = Path(row[DatasetKeys.PATH.value]).stem
         full_key = f'{key}/{stem}.{image_format}'
         write_to_s3(
             data=image.bytes(image_format=image_format),
@@ -543,7 +544,7 @@ class BaseDataset(Serializable):
         file_name = f'{partition.value}.tfrecord'
         file_path = self.cache_path / split_column.value / file_name
         if file_path.exists() and not rewrite:
-            warnings.warn(
+            warn(
                 f'{file_path} already exist. Set the rewrite argument to True '
                 f'in order to rewrite it.'
             )
@@ -624,7 +625,12 @@ class BaseDataset(Serializable):
             self,
             partition: Union[DatasetPartitionKeys, str],
             split_column: Optional[Union[DatasetPartitionKeys, str]] = None,
-            transform_fn: callable = lambda *args: args
+            n_examples: Optional[int] = None,
+            shuffle: Optional[int] = 100,
+            repeat: Optional[int] = 1,
+            batch: Optional[int] = 1,
+            prefetch: Optional[int] = tf.data.experimental.AUTOTUNE,
+            transform_fn: callable = lambda *args: args,
     ) -> tf.data.Dataset:
         r"""
 
@@ -632,6 +638,11 @@ class BaseDataset(Serializable):
         ----------
         partition
         split_column
+        n_examples
+        shuffle
+        repeat
+        batch
+        prefetch
         transform_fn
 
         Returns
@@ -650,12 +661,34 @@ class BaseDataset(Serializable):
         if not file_path.exists():
             raise ValueError()
 
-        ds = tf.data.TFRecordDataset(str(file_path))
+        files = tf.data.Dataset.list_files(str(file_path))
+        ds = files.interleave(
+            tf.data.TFRecordDataset,
+            cycle_length=tf.data.experimental.AUTOTUNE,
+            num_parallel_calls=tf.data.experimental.AUTOTUNE
+        )
 
-        return ds.map(
+        if n_examples is not None:
+            ds = ds.take(n_examples)
+
+        if shuffle is not None:
+            ds = ds.shuffle(buffer_size=shuffle)
+
+        if repeat is not None:
+            ds = ds.repeat(count=repeat)
+
+        ds = ds.map(
             lambda x: transform_fn(*self._parse_example(x)),
             num_parallel_calls=tf.data.experimental.AUTOTUNE
         )
+
+        if batch is not None:
+            ds = ds.batch(batch_size=batch)
+
+        if prefetch is not None:
+            ds = ds.prefetch(buffer_size=prefetch)
+
+        return ds
 
     def _parse_example(self, example_proto):
         r"""
@@ -754,7 +787,7 @@ class BaseDataset(Serializable):
         image.view(**image_args)
 
 
-@export
+@public
 class VqDataset(BaseDataset):
     r"""
     """
@@ -768,7 +801,7 @@ class VqDataset(BaseDataset):
             n_jobs: Optional[int] = None,
             parallel: bool = True,
             show_progress: bool = True,
-            cache: Union[str, pathlib.Path] = './dataset_cache'
+            cache: Union[str, Path] = './dataset_cache'
     ) -> None:
         self.name = name
         self.bucket = bucket
@@ -886,7 +919,7 @@ class VqDataset(BaseDataset):
         )
 
 
-@export
+@public
 class WatsonDataset(VqDataset):
     r"""
     """
@@ -900,7 +933,7 @@ class WatsonDataset(VqDataset):
             n_jobs: Optional[int] = None,
             parallel: bool = True,
             show_progress: bool = True,
-            cache: Union[str, pathlib.Path] = './dataset_cache'
+            cache: Union[str, Path] = './dataset_cache'
     ) -> None:
         self.name = name
         self.bucket = bucket
@@ -953,7 +986,7 @@ class WatsonDataset(VqDataset):
         )
 
 
-@export
+@public
 class QuiltDataset(BaseDataset):
     r"""
     """
@@ -964,7 +997,7 @@ class QuiltDataset(BaseDataset):
             package: str,
             hash_key: str = None,
             force: bool = True,
-            cache: Union[str, pathlib.Path] = './dataset_cache'
+            cache: Union[str, Path] = './dataset_cache'
     ) -> None:
         self.user = user
         self.package = package

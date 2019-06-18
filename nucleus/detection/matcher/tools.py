@@ -1,109 +1,18 @@
-from typing import Union, Tuple, Sequence
+from typing import Union, Tuple
 
 import tensorflow as tf
+from public import public
 
-from nucleus.box.tools import (
+from nucleus.box import (
     match_up_tensors, calculate_ious, ijhw_to_yxhw, ijhw_to_yx
 )
-from nucleus.utils import export
+from nucleus.utils import tf_get_shape
 
-
-# TODO: Document me!
-@export
-@tf.function
-def create_anchors(
-        scales: Union[float, Sequence[float]],
-        ratios: Union[float, Sequence[float]],
-        grid_height: float,
-        grid_width: float,
-        flatten: bool = False
-) -> tf.Tensor:
-    r"""
-    Creates anchor boxes.
-
-    Notes
-    -----
-    Anchor boxes are naturally defined on a 2-dimensional grid of the same
-    height and width as the feature map that is used to make bounding box
-    predictions.
-
-    Parameters
-    ----------
-    scales
-
-    ratios
-
-    grid_height
-        The vertical number of cells in the grid i.e the number of columns in
-        the grid.
-    grid_width
-        The horizontal number of cells in the grid i.e. the number of rows in
-        the grid.
-
-    flatten
-        Whether to flatten the anchor boxes or not. If `False`, the dimensions
-        of the anchors will be ``(height, width, n_anchors, 4)``. If `True`,
-        they will be ``(height * width * n_anchors, 4)``.
-
-    Returns
-    -------
-    anchors
-        ``(height, width, n_anchors, 4)`` or ``(height * width * n_anchors, 4)``
-        tensor representing the anchor boxes.
-    """
-    # Convert scales and ratios to tensors if necessary
-    if isinstance(scales, (int, float)):
-        scales = [scales]
-    if isinstance(ratios, (int, float)):
-        ratios = [ratios]
-    if not isinstance(scales, tf.Tensor):
-        scales = tf.convert_to_tensor(scales, dtype=tf.float32)
-    if not isinstance(ratios, tf.Tensor):
-        ratios = tf.convert_to_tensor(ratios, dtype=tf.float32)
-
-    # Determine the total number of anchors
-    n_anchors = len(scales) * len(ratios)
-
-    # Compute the centers of the grid cells
-    cell_h = 1 / grid_height
-    cell_w = 1 / grid_width
-
-    cell_x, cell_y = tf.meshgrid(
-        tf.range(start=0.5 * cell_w, limit=1, delta=cell_w),
-        tf.range(start=0.5 * cell_h, limit=1, delta=cell_h)
-    )
-
-    cell_y = tf.tile(cell_y[..., None], [1, 1, n_anchors])
-    cell_x = tf.tile(cell_x[..., None], [1, 1, n_anchors])
-
-    # Compute the height and width of the anchors
-    gridded_scales, gridded_ratios = tf.meshgrid(scales, ratios)
-
-    anchors_h = cell_h * gridded_scales / tf.sqrt(gridded_ratios)
-    anchors_w = cell_w * gridded_scales * tf.sqrt(gridded_ratios)
-
-    anchors_h = tf.reshape(anchors_h, shape=(-1,))
-    anchors_w = tf.reshape(anchors_w, shape=(-1,))
-
-    anchors_h = tf.tile(anchors_h[None, None, :], [grid_height, grid_width, 1])
-    anchors_w = tf.tile(anchors_w[None, None, :], [grid_height, grid_width, 1])
-
-    # Compute the top left coordinates of the anchors
-    anchors_i = cell_y - 0.5 * anchors_h
-    anchors_j = cell_x - 0.5 * anchors_w
-
-    # Create the grid of anchors
-    anchors = tf.stack([anchors_i, anchors_j, anchors_h, anchors_w], axis=-1)
-
-    if flatten:
-        anchors = tf.reshape(anchors, shape=(-1, 4))
-
-    return anchors
+from ..data_format import get_prediction_tensor_shape
 
 
 # TODO: Add max_box_size as an argument
-@export
-@tf.function
+@public
 def match_boxes_iou(
         boxes: tf.Tensor,
         anchors: tf.Tensor,
@@ -118,7 +27,7 @@ def match_boxes_iou(
         ``(n_boxes, n_dims)`` tensor representing the ground truth bounding
         boxes.
     anchors
-        ``(height, width, n_anchors, 4)`` tensor representing the anchor boxes.
+        ``(height, width, n_anchors, 6)`` tensor representing the anchor boxes.
     iou_threshold
         The iou threshold above which ground truth bounding boxes are
         associated with anchor boxes.
@@ -134,13 +43,13 @@ def match_boxes_iou(
         that have been successfully associated with the ground truth bounding
         boxes.
     """
-    n_boxes, n_dims = boxes.shape
-    grid_height, grid_width, n_anchors, _ = anchors.shape
+    n_boxes, n_dims = tf_get_shape(boxes)
+    grid_height, grid_width, n_anchors, _ = tf_get_shape(anchors)
 
     # Flatten the anchors
     flat_anchors = tf.reshape(
         anchors,
-        shape=(grid_height * grid_width * n_anchors, 4)
+        shape=(grid_height * grid_width * n_anchors, 6)
     )
 
     # Calculate iou between the flat anchors and the boxes
@@ -155,14 +64,25 @@ def match_boxes_iou(
         updates=-1 * tf.ones_like(ious[condition])
     )
     max_indices_0 = tf.argmax(ious, axis=0, output_type=tf.int32)
-    max_indices = [[max_indices_0[i], i] for i in range(len(max_indices_0))]
+    # max_indices = [[max_indices_0[i], i] for i in range(len(max_indices_0))]
+    max_indices = tf.map_fn(
+        fn=lambda x: [x[0], x[1]],
+        elems=[max_indices_0, tf.range(tf_get_shape(max_indices_0)[0])],
+    )
+    max_indices = tf.stack(max_indices, axis=-1)
 
     # Add 1 to the maximum iou for every box. This makes it more likely that
     # every box gets matched with an anchor.
+    # updates = tf.stack([ious[i, j] for i, j in max_indices]) + 1
+    updates = tf.map_fn(
+        fn=lambda x: ious[x[0], x[1]] + 1,
+        elems=max_indices,
+        dtype=tf.float32
+    )
     ious = tf.tensor_scatter_nd_update(
         tensor=ious,
         indices=max_indices,
-        updates=tf.stack([ious[i, j] for i, j in max_indices]) + 1
+        updates=updates
     )
 
     # Reshape the ious, boxes and anchors to the original anchor shape
@@ -176,7 +96,7 @@ def match_boxes_iou(
     )
     matched_anchors = tf.reshape(
         matched_anchors,
-        shape=[grid_height, grid_width, n_anchors, n_boxes, 4]
+        shape=[grid_height, grid_width, n_anchors, n_boxes, 6]
     )
 
     # Only keep the ious, boxes and anchors with iou above the threshold
@@ -219,19 +139,19 @@ def match_boxes_iou(
 
     boxes_list = []
     anchors_list = []
+    for i in range(6):
+        # Sort matched_anchors; anchors only have 4 dimensions
+        anchors_i = tf.gather(
+            tf.reshape(matched_anchors[i], (-1,)),
+            final_indices
+        )
+        anchors_list.append(
+            tf.reshape(
+                anchors_i,
+                [n_boxes, grid_height, grid_width, n_anchors]
+            )
+        )
     for i in range(n_dims):
-        if i < 4:
-            # Sort matched_anchors; anchors only have 4 dimensions
-            anchors_i = tf.gather(
-                tf.reshape(matched_anchors[i], (-1,)),
-                final_indices
-            )
-            anchors_list.append(
-                tf.reshape(
-                    anchors_i,
-                    [n_boxes, grid_height, grid_width, n_anchors]
-                )
-            )
         # Sort matched_boxes
         boxes_i = tf.gather(
             tf.reshape(matched_boxes[i], (-1,)),
@@ -255,8 +175,7 @@ def match_boxes_iou(
     return ijhw_to_yxhw(matched_boxes), ijhw_to_yxhw(matched_anchors)
 
 
-@export
-@tf.function
+@public
 def match_boxes_distance(
         boxes: tf.Tensor,
         anchors: tf.Tensor,
@@ -269,9 +188,10 @@ def match_boxes_distance(
     Parameters
     ----------
     boxes
-        ``(n_boxes, 4)`` tensor representing the ground truth bounding boxes.
+        ``(n_boxes, n_dims)`` tensor representing the ground truth bounding
+        boxes.
     anchors
-        ``(height, width, n_anchors, 4)`` tensor representing the anchor boxes.
+        ``(height, width, n_anchors, 6)`` tensor representing the anchor boxes.
     max_distance
         The maximum distance between the center of ground truth bounding box
         and the center of an anchor boxes below which the two can be
@@ -429,8 +349,7 @@ def match_boxes_distance(
 
 
 # TODO: Currently not used
-@export
-@tf.function
+@public
 def match_all_boxes(
         all_boxes: tf.Tensor,
         anchors: tf.Tensor,
@@ -442,10 +361,10 @@ def match_all_boxes(
     Parameters
     ----------
     all_boxes
-        ``(batch_size, n_boxes, 4)`` tensor representing a batch of ground
+        ``(batch_size, n_boxes, n_dims)`` tensor representing a batch of ground
         truth bounding boxes.
     anchors
-        ``(height, width, n_anchors, 4)`` tensor representing the anchor boxes.
+        ``(height, width, n_anchors, 6)`` tensor representing the anchor boxes.
     match_boxes_fn
         The specific matching function used to associate every batch of ground
         truth bounding boxes with the anchor boxes.
@@ -478,8 +397,7 @@ def match_all_boxes(
     return tf.stack(matched_all_boxes), tf.stack(matched_all_anchors)
 
 
-@export
-@tf.function
+@public
 def combine_boxes_ssd(
         matched_boxes: tf.Tensor,
         matched_anchors: tf.Tensor,
@@ -506,7 +424,7 @@ def combine_boxes_ssd(
     matched_boxes
         ``(..., n_dims)`` tensor representing the ground truth bounding boxes.
     matched_anchors
-        ``(..., 4)`` tensor representing the anchor boxes.
+        ``(..., 6)`` tensor representing the anchor boxes.
 
     Returns
     -------
@@ -522,8 +440,7 @@ def combine_boxes_ssd(
     )
 
 
-@export
-@tf.function
+@public
 def combine_boxes_yolo(
         matched_boxes: tf.Tensor,
         matched_anchors: tf.Tensor,
@@ -558,8 +475,7 @@ def combine_boxes_yolo(
     )
 
 
-@export
-@tf.function
+@public
 def combine_boxes_reinspect(
         matched_boxes: tf.Tensor,
         matched_anchors: tf.Tensor,
@@ -578,7 +494,7 @@ def combine_boxes_reinspect(
     matched_boxes
         ``(..., n_dims)`` tensor representing the ground truth bounding boxes.
     matched_anchors
-        ``(..., 4)`` tensor representing the anchor boxes.
+        ``(..., 6)`` tensor representing the anchor boxes.
 
     Returns
     -------
@@ -595,8 +511,7 @@ def combine_boxes_reinspect(
 
 
 # TODO: Rewrite docs
-@export
-@tf.function
+@public
 def combine_boxes(
         matched_boxes: tf.Tensor,
         matched_anchors: tf.Tensor,
@@ -612,7 +527,7 @@ def combine_boxes(
     matched_boxes
         ``(..., n_dims)`` tensor representing the ground truth bounding boxes.
     matched_anchors
-        ``(..., 4)`` tensor representing the anchor boxes.
+        ``(..., 6)`` tensor representing the anchor boxes.
     combine_yx_fn
 
     combine_hw_fn
@@ -622,7 +537,7 @@ def combine_boxes(
     combines_boxes
         ``(..., n_dims)`` tensor representing ground truth bounding boxes.
     """
-    condition = tf.greater(tf.reduce_sum(matched_boxes, axis=-1), 0)
+    condition = tf.not_equal(tf.reduce_sum(matched_boxes, axis=-1), 0)
 
     boxes = matched_boxes[condition]
     matched_anchors = matched_anchors[condition]
@@ -641,8 +556,7 @@ def combine_boxes(
     )
 
 
-@export
-@tf.function
+@public
 def combine_yx_ssd(boxes: tf.Tensor, anchors: tf.Tensor) -> tf.Tensor:
     r"""
     Combines matched yx coordinates of the ground truth bounding boxes with
@@ -664,7 +578,7 @@ def combine_yx_ssd(boxes: tf.Tensor, anchors: tf.Tensor) -> tf.Tensor:
     boxes
         ``(..., n_dims)`` tensor representing the ground truth bounding boxes.
     anchors
-        ``(..., 4)`` tensor representing the anchor boxes.
+        ``(..., 6)`` tensor representing the anchor boxes.
 
     Returns
     -------
@@ -675,8 +589,7 @@ def combine_yx_ssd(boxes: tf.Tensor, anchors: tf.Tensor) -> tf.Tensor:
     return (boxes[..., :2] - anchors[..., :2]) / anchors[..., 2:4]
 
 
-@export
-@tf.function
+@public
 def combine_yx_yolo(boxes: tf.Tensor, anchors: tf.Tensor) -> tf.Tensor:
     r"""
     Combines matched yx coordinates of the ground truth bounding boxes with
@@ -693,7 +606,7 @@ def combine_yx_yolo(boxes: tf.Tensor, anchors: tf.Tensor) -> tf.Tensor:
     boxes
         ``(..., n_dims)`` tensor representing the ground truth bounding boxes.
     anchors
-        ``(..., 4)`` tensor representing the anchor boxes.
+        ``(..., 6)`` tensor representing the anchor boxes.
 
     Returns
     -------
@@ -701,11 +614,10 @@ def combine_yx_yolo(boxes: tf.Tensor, anchors: tf.Tensor) -> tf.Tensor:
         ``(..., 2)`` tensor representing ground the yx coordinates of the truth
         bounding boxes as defined by the SSD paper.
     """
-    return (boxes[..., :2] - anchors[..., :2]) / anchors[..., 2:4] + 0.5
+    return (boxes[..., :2] - anchors[..., :2]) / anchors[..., 4:6] + 0.5
 
 
-@export
-@tf.function
+@public
 def combine_yx_reinspect(boxes: tf.Tensor, anchors: tf.Tensor) -> tf.Tensor:
     r"""
     Combines matched yx coordinates of the ground truth bounding boxes with
@@ -722,7 +634,7 @@ def combine_yx_reinspect(boxes: tf.Tensor, anchors: tf.Tensor) -> tf.Tensor:
     boxes
         ``(..., n_dims)`` tensor representing the ground truth bounding boxes.
     anchors
-        ``(..., 4)`` tensor representing the anchor boxes.
+        ``(..., 6)`` tensor representing the anchor boxes.
 
     Returns
     -------
@@ -733,8 +645,7 @@ def combine_yx_reinspect(boxes: tf.Tensor, anchors: tf.Tensor) -> tf.Tensor:
     return boxes[..., :2] - anchors[..., :2]
 
 
-@export
-@tf.function
+@public
 def combine_hw_sdd(boxes: tf.Tensor, anchors: tf.Tensor) -> tf.Tensor:
     r"""
     Combines matched hw coordinates of the ground truth bounding boxes with
@@ -762,7 +673,7 @@ def combine_hw_sdd(boxes: tf.Tensor, anchors: tf.Tensor) -> tf.Tensor:
     boxes
         ``(..., n_dims)`` tensor representing the ground truth bounding boxes.
     anchors
-        ``(..., 4)`` tensor representing the anchor boxes.
+        ``(..., 6)`` tensor representing the anchor boxes.
 
     Returns
     -------
@@ -773,8 +684,7 @@ def combine_hw_sdd(boxes: tf.Tensor, anchors: tf.Tensor) -> tf.Tensor:
     return tf.math.log(boxes[..., 2:4] / anchors[..., 2:4])
 
 
-@export
-@tf.function
+@public
 def combine_hw_reinspect(boxes: tf.Tensor, anchors: tf.Tensor) -> tf.Tensor:
     r"""
     Combines matched hw coordinates of the ground truth bounding boxes with
@@ -791,7 +701,7 @@ def combine_hw_reinspect(boxes: tf.Tensor, anchors: tf.Tensor) -> tf.Tensor:
     boxes
         ``(..., n_dims)`` tensor representing the ground truth bounding boxes.
     anchors
-        ``(..., 4)`` tensor representing the anchor boxes. Note that, this
+        ``(..., 6)`` tensor representing the anchor boxes. Note that, this
         parameter is not used in this function and that is only present here
         to conform with the expected interface.
 
@@ -805,12 +715,11 @@ def combine_hw_reinspect(boxes: tf.Tensor, anchors: tf.Tensor) -> tf.Tensor:
 
 
 # TODO: Rewrite docs
-@export
-@tf.function
+@public
 def extract_boxes_ssd(
         matched_boxes: tf.Tensor,
         matched_anchors: tf.Tensor,
-) -> Tuple[tf.Tensor]:
+) -> tf.Tensor:
     r"""
     Combines matched ground truth bounding boxes with matched anchor boxes to
     create ground truth bounding boxes as defined by the SSD paper.
@@ -833,7 +742,7 @@ def extract_boxes_ssd(
     matched_boxes
         ``(..., n_dims)`` tensor representing the ground truth bounding boxes.
     matched_anchors
-        ``(..., 4)`` tensor representing the anchor boxes.
+        ``(..., 6)`` tensor representing the anchor boxes.
 
     Returns
     -------
@@ -850,12 +759,11 @@ def extract_boxes_ssd(
 
 
 # TODO: Rewrite docs
-@export
-@tf.function
+@public
 def extract_boxes_yolo(
         matched_boxes: tf.Tensor,
         matched_anchors: tf.Tensor,
-) -> Tuple[tf.Tensor]:
+) -> tf.Tensor:
     r"""
     Combines matched ground truth bounding boxes with matched anchor boxes to
     create ground truth bounding boxes as defined by the Yolo paper.
@@ -870,7 +778,7 @@ def extract_boxes_yolo(
     matched_boxes
         ``(..., n_dims)`` tensor representing the ground truth bounding boxes.
     matched_anchors
-        ``(..., 4)`` tensor representing the anchor boxes.
+        ``(..., 6)`` tensor representing the anchor boxes.
 
     Returns
     -------
@@ -887,12 +795,11 @@ def extract_boxes_yolo(
 
 
 # TODO: Rewrite docs
-@export
-@tf.function
+@public
 def extract_boxes_reinspect(
         matched_boxes: tf.Tensor,
         matched_anchors: tf.Tensor,
-) -> Tuple[tf.Tensor]:
+) -> tf.Tensor:
     r"""
     Combines matched ground truth bounding boxes with matched anchor boxes to
     create ground truth bounding boxes as defined by the Yolo paper.
@@ -907,7 +814,7 @@ def extract_boxes_reinspect(
     matched_boxes
         ``(..., n_dims)`` tensor representing the ground truth bounding boxes.
     matched_anchors
-        ``(..., 4)`` tensor representing the anchor boxes.
+        ``(..., 6)`` tensor representing the anchor boxes.
 
     Returns
     -------
@@ -924,14 +831,13 @@ def extract_boxes_reinspect(
 
 
 # TODO: Rewrite docs
-@export
-@tf.function
+@public
 def extract_boxes(
         matched_boxes: tf.Tensor,
         matched_anchors: tf.Tensor,
         extract_yx_fn: callable,
         extract_hw_fn: callable
-) -> Tuple[tf.Tensor]:
+) -> tf.Tensor:
     r"""
     Combines matched ground truth bounding boxes with matched anchor boxes to
     create ground truth bounding boxes.
@@ -941,7 +847,7 @@ def extract_boxes(
     matched_boxes
         ``(..., n_dims)`` tensor representing the ground truth bounding boxes.
     matched_anchors
-        ``(..., 4)`` tensor representing the anchor boxes.
+        ``(..., 6)`` tensor representing the anchor boxes.
     extract_yx_fn
 
     extract_hw_fn
@@ -951,7 +857,7 @@ def extract_boxes(
     combines_boxes
         ``(..., n_dims)`` tensor representing ground truth bounding boxes.
     """
-    condition = tf.greater(tf.reduce_sum(matched_boxes, axis=-1), 0)
+    condition = tf.not_equal(tf.reduce_sum(matched_boxes, axis=-1), 0)
 
     boxes = matched_boxes[condition]
     matched_anchors = matched_anchors[condition]
@@ -965,8 +871,7 @@ def extract_boxes(
 
 
 # TODO: Rewrite docs
-@export
-@tf.function
+@public
 def extract_yx_ssd(boxes: tf.Tensor, anchors: tf.Tensor) -> tf.Tensor:
     r"""
     Combines matched yx coordinates of the ground truth bounding boxes with
@@ -988,7 +893,7 @@ def extract_yx_ssd(boxes: tf.Tensor, anchors: tf.Tensor) -> tf.Tensor:
     boxes
         ``(..., n_dims)`` tensor representing the ground truth bounding boxes.
     anchors
-        ``(..., 4)`` tensor representing the anchor boxes.
+        ``(..., 6)`` tensor representing the anchor boxes.
 
     Returns
     -------
@@ -1000,8 +905,7 @@ def extract_yx_ssd(boxes: tf.Tensor, anchors: tf.Tensor) -> tf.Tensor:
 
 
 # TODO: Rewrite docs
-@export
-@tf.function
+@public
 def extract_yx_yolo(boxes: tf.Tensor, anchors: tf.Tensor) -> tf.Tensor:
     r"""
     Combines matched yx coordinates of the ground truth bounding boxes with
@@ -1018,7 +922,7 @@ def extract_yx_yolo(boxes: tf.Tensor, anchors: tf.Tensor) -> tf.Tensor:
     boxes
         ``(..., n_dims)`` tensor representing the ground truth bounding boxes.
     anchors
-        ``(..., 4)`` tensor representing the anchor boxes.
+        ``(..., 6)`` tensor representing the anchor boxes.
 
     Returns
     -------
@@ -1026,11 +930,10 @@ def extract_yx_yolo(boxes: tf.Tensor, anchors: tf.Tensor) -> tf.Tensor:
         ``(..., 2)`` tensor representing ground the yx coordinates of the truth
         bounding boxes as defined by the SSD paper.
     """
-    return (boxes[..., :2] - 0.5) * anchors[..., 2:4] + anchors[..., :2]
+    return (boxes[..., :2] - 0.5) * anchors[..., 4:6] + anchors[..., :2]
 
 # TODO: Rewrite docs
-@export
-@tf.function
+@public
 def extract_yx_reinspect(
         boxes: tf.Tensor,
         anchors: tf.Tensor
@@ -1050,7 +953,7 @@ def extract_yx_reinspect(
     boxes
         ``(..., n_dims)`` tensor representing the ground truth bounding boxes.
     anchors
-        ``(..., 4)`` tensor representing the anchor boxes.
+        ``(..., 6)`` tensor representing the anchor boxes.
 
     Returns
     -------
@@ -1062,8 +965,7 @@ def extract_yx_reinspect(
 
 
 # TODO: Rewrite docs
-@export
-@tf.function
+@public
 def extract_hw_sdd(boxes: tf.Tensor, anchors: tf.Tensor) -> tf.Tensor:
     r"""
     Combines matched hw coordinates of the ground truth bounding boxes with
@@ -1091,7 +993,7 @@ def extract_hw_sdd(boxes: tf.Tensor, anchors: tf.Tensor) -> tf.Tensor:
     boxes
         ``(..., n_dims)`` tensor representing the ground truth bounding boxes.
     anchors
-        ``(..., 4)`` tensor representing the anchor boxes.
+        ``(..., 6)`` tensor representing the anchor boxes.
 
     Returns
     -------
@@ -1103,8 +1005,7 @@ def extract_hw_sdd(boxes: tf.Tensor, anchors: tf.Tensor) -> tf.Tensor:
 
 
 # TODO: Rewrite docs
-@export
-@tf.function
+@public
 def extract_hw_reinspect(
         boxes: tf.Tensor,
         anchors: tf.Tensor
@@ -1124,7 +1025,7 @@ def extract_hw_reinspect(
     boxes
         ``(..., n_dims)`` tensor representing the ground truth bounding boxes.
     anchors
-        ``(..., 4)`` tensor representing the anchor boxes. Note that, this
+        ``(..., 6)`` tensor representing the anchor boxes. Note that, this
         parameter is not used in this function and that is only present here
         to conform with the expected interface.
 
@@ -1138,7 +1039,7 @@ def extract_hw_reinspect(
 
 
 # TODO: Improve docs
-@export
+@public
 def unmatch_boxes(matched_boxes: tf.Tensor) -> tf.Tensor:
     r"""
     Extracts real valid bounding boxes from matched boxes.
