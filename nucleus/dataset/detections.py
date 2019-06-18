@@ -154,8 +154,13 @@ class BasketballDetectionsDataset(QuiltDataset):
             shape=[height, width, channels]
         )
 
-        if height != 1080:
-            image = tf.image.resize(image, size=(1080, 1920))
+        image = tf.cond(
+            pred=tf.logical_or(
+                tf.not_equal(height, 1080), tf.not_equal(width, 1920)
+            ),
+            true_fn=lambda: tf.image.resize(image, size=(1080, 1920)),
+            false_fn=lambda: image
+        )
 
         # labels_length = tf.cast(example['labels/length'], tf.int32)
         # labels = tf.io.decode_raw(example['labels/encoded'], tf.float32)
