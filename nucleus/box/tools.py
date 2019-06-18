@@ -1,64 +1,55 @@
 from typing import Union, Tuple
 
 import tensorflow as tf
+from public import public
 
-from nucleus.utils import export, name_scope, tf_get_shape
-
-# TODO: Remove tf_get_shape
+from nucleus.utils import name_scope, tf_get_shape
 
 
-@export
+@public
 @name_scope
-@tf.function
 def ijhw_to_yx(ijhw: tf.Tensor) -> tf.Tensor:
     return ijhw[..., :2] + ijhw[..., 2:4] / 2
 
 
-@export
+@public
 @name_scope
-@tf.function
 def ijhw_to_yxhw(ijhw: tf.Tensor) -> tf.Tensor:
     return tf.concat([ijhw_to_yx(ijhw), ijhw[..., 2:]], axis=-1)
 
 
-@export
+@public
 @name_scope
-@tf.function
 def ijhw_to_kl(ijhw: tf.Tensor) -> tf.Tensor:
     return ijhw[..., :2] + ijhw[..., 2:4]
 
 
-@export
+@public
 @name_scope
-@tf.function
 def ijhw_to_ijkl(ijhw: tf.Tensor) -> tf.Tensor:
     return tf.concat([ijhw[..., :2], ijhw_to_kl(ijhw), ijhw[..., 4:]], axis=-1)
 
 
-@export
+@public
 @name_scope
-@tf.function
 def yxhw_to_ij(yxhw: tf.Tensor) -> tf.Tensor:
     return yxhw[..., :2] - yxhw[..., 2:4] / 2
 
 
-@export
+@public
 @name_scope
-@tf.function
 def yxhw_to_ijhw(yxhw: tf.Tensor) -> tf.Tensor:
     return tf.concat([yxhw_to_ij(yxhw), yxhw[..., 2:]], axis=-1)
 
 
-@export
+@public
 @name_scope
-@tf.function
 def yxhw_to_hw(yxhw: tf.Tensor) -> tf.Tensor:
     return yxhw[..., :2] + yxhw[..., 2:4] / 2
 
 
-@export
+@public
 @name_scope
-@tf.function
 def yxhw_to_ijkl(yxhw: tf.Tensor) -> tf.Tensor:
     return tf.concat(
         [yxhw_to_ij(yxhw), yxhw_to_hw(yxhw), yxhw[..., 4:]],
@@ -66,30 +57,26 @@ def yxhw_to_ijkl(yxhw: tf.Tensor) -> tf.Tensor:
     )
 
 
-@export
+@public
 @name_scope
-@tf.function
 def ijkl_to_hw(ijkl: tf.Tensor) -> tf.Tensor:
     return ijkl[..., :2] - ijkl[..., 2:4]
 
 
-@export
+@public
 @name_scope
-@tf.function
 def ijkl_to_ijhw(ijkl: tf.Tensor) -> tf.Tensor:
     return tf.concat([ijkl[..., :2], ijkl_to_hw(ijkl), ijkl[..., 4:]], axis=-1)
 
 
-@export
+@public
 @name_scope
-@tf.function
 def ijkl_to_xy(ijkl: tf.Tensor) -> tf.Tensor:
     return ijkl[..., :2] + ijkl_to_hw(ijkl) / 2
 
 
-@export
+@public
 @name_scope
-@tf.function
 def ijkl_to_xy(ijkl: tf.Tensor) -> tf.Tensor:
     return tf.concat(
         [ijkl_to_hw(ijkl), ijkl_to_hw(ijkl), ijkl[..., 4:]],
@@ -97,9 +84,8 @@ def ijkl_to_xy(ijkl: tf.Tensor) -> tf.Tensor:
     )
 
 
-@export
+@public
 @name_scope
-@tf.function
 def swap_axes_order(coords: tf.Tensor) -> tf.Tensor:
     coord_indices = [1, 0, 3, 2]
     other_indices = list(range(len(coord_indices), tf_get_shape(coords)[-1]))
@@ -107,9 +93,8 @@ def swap_axes_order(coords: tf.Tensor) -> tf.Tensor:
     return coords[..., indices]
 
 
-@export
+@public
 @name_scope
-@tf.function
 def scale_coords(
         coords: tf.Tensor,
         resolution: Union[int, Tuple[int, int]]
@@ -124,9 +109,8 @@ def scale_coords(
     return tf.concat([coord, coords[..., 4:]], axis=-1)
 
 
-@export
+@public
 @name_scope
-@tf.function
 def match_up_tensors(
         tensor_a: tf.Tensor,
         tensor_b: tf.Tensor
@@ -151,7 +135,7 @@ def match_up_tensors(
         ``(..., num_a, num_b, m)`` containing every pair of vectors from the
         last dimension of `tensor_a` and `tensor_b`.
     """
-    tensor_b_shape = tensor_b.shape.as_list()
+    tensor_b_shape = tf_get_shape(tensor_b)
     num_b, _ = tensor_b_shape[-2:]
     remainder_shape = tuple([d for d in tensor_b_shape[:-2]])
 
@@ -159,7 +143,7 @@ def match_up_tensors(
 
     reshaped_a = tf.reshape(
         repeated_a,
-        [num_b] + tensor_a.shape.as_list()
+        [num_b] + tf_get_shape(tensor_a)
     )
 
     dims = [d + 1 for d in range(len(remainder_shape) + 1)]
@@ -169,14 +153,14 @@ def match_up_tensors(
         dims + [0, len(remainder_shape) + 2]
     )
 
-    tensor_a_shape = tensor_a.shape.as_list()
+    tensor_a_shape = tf_get_shape(tensor_a)
     num_a, _ = tensor_a_shape[-2:]
 
     repeated_b = tf.tile(tensor_b, (num_a,) + (1,) * (len(remainder_shape) + 1))
 
     reshaped_b = tf.reshape(
         repeated_b,
-        [num_a] + tensor_b.shape.as_list()
+        [num_a] + tf_get_shape(tensor_b)
     )
 
     dims = [d + 1 for d in range(len(remainder_shape))]
@@ -189,9 +173,8 @@ def match_up_tensors(
     return transposed_a, transposed_b
 
 
-@export
+@public
 @name_scope
-@tf.function
 def calculate_intersections(
         ijhw_a: tf.Tensor,
         ijhw_b: tf.Tensor
@@ -224,9 +207,8 @@ def calculate_intersections(
     return tf.reduce_prod(intersection_hw, axis=-1)
 
 
-@export
+@public
 @name_scope
-@tf.function
 def calculate_unions(
         ijhw_a: tf.Tensor,
         ijhw_b: tf.Tensor
@@ -253,9 +235,8 @@ def calculate_unions(
     return a_areas + b_areas - intersections
 
 
-@export
+@public
 @name_scope
-@tf.function
 def calculate_ious(
         ijhw_a: tf.Tensor,
         ijhw_b: tf.Tensor
@@ -282,12 +263,11 @@ def calculate_ious(
     return intersections / (a_areas + b_areas - intersections)
 
 
-@export
+@public
 @name_scope
-@tf.function
 def pad_tensor(
         tensor: tf.Tensor,
-        max_length : int,
+        max_length: int,
         padding_value: float = -1
 ) -> tf.Tensor:
     r"""
@@ -303,7 +283,7 @@ def pad_tensor(
     """
     tensor_shape = tf_get_shape(tensor)
 
-    # assert tf.less_equal(tensor_shape[0], max_length)
+    tf.assert_equal(tf.less_equal(tensor_shape[0], max_length), True)
 
     padding = padding_value * tf.ones(
         shape=[max_length - tensor_shape[0]] + tensor_shape[1:],
@@ -313,16 +293,20 @@ def pad_tensor(
     return tf.concat([tensor, padding], axis=0)
 
 
-@export
+@public
 @name_scope
-@tf.function
-def unpad_tensor(tensor: tf.Tensor, padding_value: float = -1) -> tf.Tensor:
+def unpad_tensor(
+        tensor: tf.Tensor,
+        padding_value: float = -1,
+        boolean_fn=tf.equal
+) -> tf.Tensor:
     r"""
 
     Parameters
     ----------
     tensor
     padding_value
+    boolean_fn
 
     Returns
     -------
@@ -333,7 +317,7 @@ def unpad_tensor(tensor: tf.Tensor, padding_value: float = -1) -> tf.Tensor:
     )
     return tensor[
         tf.logical_not(
-            tf.equal(
+            boolean_fn(
                 tf.reduce_sum(tensor, axis=-1),
                 padding_sum
             )
@@ -341,9 +325,40 @@ def unpad_tensor(tensor: tf.Tensor, padding_value: float = -1) -> tf.Tensor:
     ]
 
 
-@export
+@public
 @name_scope
-@tf.function
+def fix_tensor_length(
+        tensor: tf.Tensor,
+        max_length: int,
+        padding_value: float = -1
+) -> tf.Tensor:
+    r"""
+
+    Parameters
+    ----------
+    tensor
+    max_length
+    padding_value
+
+    Returns
+    -------
+    """
+    tensor_shape = tf_get_shape(tensor)
+
+    if tf.less(tensor_shape[0], max_length):
+        tensor = pad_tensor(
+            tensor=tensor,
+            max_length=max_length,
+            padding_value=padding_value
+        )
+    if tf.greater(tensor_shape[0], max_length):
+        tensor = tensor[:max_length]
+
+    return tensor
+
+
+@public
+@name_scope
 def filter_boxes(
         boxes: tf.Tensor,
         pad: bool = True
@@ -401,9 +416,8 @@ def filter_boxes(
     return boxes
 
 
-@export
+@public
 @name_scope
-@tf.function
 def flip_boxes_left_right(
         boxes: tf.Tensor
 ) -> tf.Tensor:

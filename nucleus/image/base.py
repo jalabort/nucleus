@@ -1,26 +1,25 @@
-from typing import Union, Optional, Tuple, List, Dict
+from typing import Union, Optional, Tuple, List
 
 import os
-import pathlib
-import warnings
-from urllib.request import urlopen
-
 import numpy as np
 import tensorflow as tf
-import PIL.Image as PilImage
+from pathlib import Path
+from public import public
+from warnings import warn
+from urllib.request import urlopen
+from PIL import Image as PilImage
 
 from nucleus.box import Box, BoxCollection
 from nucleus.base import Serializable
 from nucleus.visualize import ImageViewer
-# TODO: Use python-aws
+# TODO: Switch to python-aws whenever possible
 from nucleus.s3 import is_s3_path, get_signed_s3_url
 from nucleus.types import ParsedImage
-from nucleus.utils import export
 
 from . import tools as img_tools
 
 
-@export
+@public
 class Image(Serializable):
     r"""
 
@@ -88,7 +87,7 @@ class Image(Serializable):
             box_collection=box_collection
         )
 
-    def serialize(self, path: Union[str, pathlib.Path]) -> ParsedImage:
+    def serialize(self, path: Union[str, Path]) -> ParsedImage:
         r"""
 
         Returns
@@ -96,7 +95,7 @@ class Image(Serializable):
 
         """
         parsed = dict(
-            path=str(pathlib.Path(path).absolute()),
+            path=str(Path(path).absolute()),
             labels=self.labels
         )
 
@@ -107,7 +106,7 @@ class Image(Serializable):
 
     def save(
             self,
-            path: Union[str, pathlib.Path],
+            path: Union[str, Path],
             compress: bool = False,
             image_format: str = 'png',
             rewrite: bool = False
@@ -125,7 +124,7 @@ class Image(Serializable):
         -------
 
         """
-        path = pathlib.Path(path)
+        path = Path(path)
 
         stem = path.stem
         suffix = path.suffix[1:]
@@ -133,7 +132,7 @@ class Image(Serializable):
             image_format = suffix
         name = '.'.join([stem, image_format])
 
-        path = pathlib.Path(path.parent / name)
+        path = Path(path.parent / name)
 
         if not path.exists() or rewrite:
             parsed = self.serialize(path=path)
@@ -150,7 +149,7 @@ class Image(Serializable):
     @classmethod
     def from_path(
             cls,
-            path: Union[str, pathlib.Path],
+            path: Union[str, Path],
             labels: List[str] = None,
             box_collection: Optional[Union[List[Box], BoxCollection]] = None
     ) -> Optional['Image']:
@@ -180,7 +179,7 @@ class Image(Serializable):
                 box_collection=box_collection
             )
         except tf.errors.InvalidArgumentError as e:
-            warnings.warn(
+            warn(
                 f'Unable to create image from path: {path}.'
             )
             image = None
@@ -423,9 +422,10 @@ class Image(Serializable):
     def view_with_grid(
             self,
             grid_shape: Tuple[int, int],
-            grid_color: str = 'red',
             view_boxes: bool = False,
             mask: tf.Tensor = None,
+            grid_edge_color: str = 'blue',
+            grid_face_color: str = 'red',
             figure_id=None,
             new_figure=False,
             **kwargs,
@@ -435,9 +435,10 @@ class Image(Serializable):
         Parameters
         ----------
         grid_shape
-        grid_color
         view_boxes
         mask
+        grid_edge_color
+        grid_face_color
         figure_id
         new_figure
         kwargs
@@ -467,7 +468,7 @@ class Image(Serializable):
                     *cell[-2:][::-1],
                     fill=False,
                     alpha=0.5,
-                    edgecolor=grid_color,
+                    edgecolor=grid_edge_color,
                     linewidth=2
                 )
                 ax.add_patch(rect)
@@ -479,8 +480,8 @@ class Image(Serializable):
                     *cell[-2:][::-1],
                     fill=True if m else False,
                     alpha=0.5,
-                    facecolor=grid_color,
-                    edgecolor=grid_color,
+                    facecolor=grid_face_color,
+                    edgecolor=grid_edge_color,
                     linewidth=2
                 )
                 ax.add_patch(rect)

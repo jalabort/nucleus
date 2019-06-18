@@ -1,16 +1,15 @@
 from typing import Optional, Union, List, Dict
 
-import pathlib
 import numpy as np
 import pandas as pd
-
-from nucleus.utils import export
+from pathlib import Path
+from public import public
 
 from .base import QuiltDataset
 from .keys import DatasetKeys
 
 
-@export
+@public
 class BasketballJerseysDataset(QuiltDataset):
     r"""
 
@@ -27,7 +26,7 @@ class BasketballJerseysDataset(QuiltDataset):
             self,
             hash_key: Optional[str] = None,
             force: Optional[bool] = True,
-            cache: Union[str, pathlib.Path] = './dataset_cache',
+            cache: Union[str, Path] = './dataset_cache',
     ) -> None:
         super(BasketballJerseysDataset, self).__init__(
             user=self.user,

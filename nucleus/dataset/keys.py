@@ -1,10 +1,9 @@
-import enum
+from enum import Enum
+from public import public
 
-from nucleus.utils import export
 
-
-@export
-class DatasetKeys(enum.Enum):
+@public
+class DatasetKeys(Enum):
     NAME = 'name'
     CACHE = 'cache'
     PATH = 'path'
@@ -14,20 +13,20 @@ class DatasetKeys(enum.Enum):
     N_BOXES = 'n_boxes'
 
 
-@export
-class DatasetListKeys(enum.Enum):
+@public
+class DatasetListKeys(Enum):
     LABELS = 'labels'
     BOXES = 'boxes'
     BOXES_LABELS = 'boxes_labels'
 
 
-@export
-class DatasetSplitKeys(enum.Enum):
+@public
+class DatasetSplitKeys(Enum):
     RANDOM = 'split_random'
 
 
-@export
-class DatasetPartitionKeys(enum.Enum):
+@public
+class DatasetPartitionKeys(Enum):
     TEST = 'test'
     VAL = 'val'
     TRAIN = 'train'

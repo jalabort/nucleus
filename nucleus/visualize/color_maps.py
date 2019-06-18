@@ -1,13 +1,9 @@
-import enum
+from enum import Enum
+from public import public
 
 
-__all__ = [
-    'BasketballDetectionsLabelColorMap',
-    'BasketballJerseysLabelColorMap'
-]
-
-
-class BasketballDetectionsLabelColorMap(enum.Enum):
+@public
+class BasketballDetectionsLabelColorMap(Enum):
     UNKNOWN = 'black'
     PLAYER = 'blue'
     REFEREE = 'green'
@@ -15,7 +11,8 @@ class BasketballDetectionsLabelColorMap(enum.Enum):
     SUBSTITUTE = 'violet'
 
 
-class BasketballJerseysLabelColorMap(enum.Enum):
+@public
+class BasketballJerseysLabelColorMap(Enum):
     UNKNOWN = 'black'
     OCCLUDED = 'blue'
     PARTIAL = 'green'
