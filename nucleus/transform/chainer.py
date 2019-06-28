@@ -1,14 +1,13 @@
 from typing import Tuple, Sequence
 
 import tensorflow as tf
-from public import public
 
-from nucleus.utils import name_scope
+from nucleus.utils import export, name_scope
 
 from .base import Transform
 
 
-@public
+@export
 class TransformChainer(Transform):
     r"""
     Callable class for chaining data augmentation operations together.

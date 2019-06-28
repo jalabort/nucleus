@@ -1,8 +1,9 @@
 from typing import Optional
 
 import tensorflow as tf
-from public import public
 from stringcase import snakecase
+
+from nucleus.utils import export
 
 
 class BaseLoss(tf.keras.losses.Loss):
@@ -24,7 +25,7 @@ class BaseLoss(tf.keras.losses.Loss):
         super().__init__(reduction=reduction, name=name)
 
 
-@public
+@export
 class SsdLoss(BaseLoss):
     r"""
     Single Shot Detection (SSD) loss function.
@@ -88,7 +89,7 @@ class SsdLoss(BaseLoss):
         return coords_term + scores_term + labels_term
 
 
-@public
+@export
 class SsdCoordsLoss(BaseLoss):
     r"""
     Single Shot Detection (SSD) coordinates loss function.
@@ -146,7 +147,7 @@ class SsdCoordsLoss(BaseLoss):
         )
 
 
-@public
+@export
 class SsdScoresLoss(BaseLoss):
     r"""
     Single Shot Detection (SSD) labels loss function.
@@ -200,7 +201,7 @@ class SsdScoresLoss(BaseLoss):
         )
 
 
-@public
+@export
 class SsdLabelsLoss(BaseLoss):
     r"""
     Single Shot Detection (SSD) labels loss function.

@@ -3,6 +3,8 @@ from typing import Optional, List
 import numpy as np
 import tensorflow as tf
 
+from nucleus.utils import export
+
 
 def _parse_cmap(cmap_name=None, image_shape_len=3):
     import matplotlib.cm as cm
@@ -135,6 +137,7 @@ class MatplotlibRenderer:
         self.figure.clf()
 
 
+@export
 class MatplotlibImageViewer(MatplotlibRenderer):
 
     def __init__(self, figure_id, new_figure, pixels, labels):
@@ -225,10 +228,6 @@ class MatplotlibImageViewer(MatplotlibRenderer):
         return self
 
 
-class MatplotlibImageCollectionViewer:
-    pass
-
-
 box_default_style1 = dict(
     resolution=(1080, 1920),
     label_color=True,
@@ -294,6 +293,7 @@ box_default_style2 = dict(
 )
 
 
+@export
 class MatplotlibBoxViewer(MatplotlibRenderer):
     r"""
 
@@ -464,8 +464,3 @@ class MatplotlibBoxViewer(MatplotlibRenderer):
         _set_figure_size(self.figure, figure_size)
 
         return self
-
-
-# TODO[jalabort]: Is this really needed?
-class MatplotlibBoxCollectionViewer:
-    pass

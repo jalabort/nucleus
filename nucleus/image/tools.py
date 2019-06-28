@@ -1,11 +1,10 @@
 import tensorflow as tf
-from public import public
 
 from nucleus.box import scale_coords, ijhw_to_ijkl
-from nucleus.utils import name_scope
+from nucleus.utils import export, name_scope
 
 
-@public
+@export
 @name_scope
 def hwc_to_chw(hwc: tf.Tensor) -> tf.Tensor:
     r"""
@@ -29,7 +28,7 @@ def hwc_to_chw(hwc: tf.Tensor) -> tf.Tensor:
     return chw
 
 
-@public
+@export
 @name_scope
 def chw_to_hwc(chw: tf.Tensor) -> tf.Tensor:
     r"""
@@ -53,7 +52,7 @@ def chw_to_hwc(chw: tf.Tensor) -> tf.Tensor:
     return hwc
 
 
-@public
+@export
 @name_scope
 def crop_chw(chw: tf.Tensor, ijhw: tf.Tensor) -> tf.Tensor:
     r"""

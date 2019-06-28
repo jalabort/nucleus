@@ -1,12 +1,13 @@
 from typing import Tuple
 
 import tensorflow as tf
-from public import public
+
+from nucleus.utils import export
 
 from .base import DeterministicTransform, RandomTransform
 
 
-@public
+@export
 class PixelValueScale(DeterministicTransform):
     r"""
     Callable class for scaling the value of images pixels.
@@ -43,7 +44,7 @@ class PixelValueScale(DeterministicTransform):
         return image, boxes
 
 
-@public
+@export
 class RandomPixelValueScale(RandomTransform):
     r"""
     Callable class for randomly scaling the value of images pixels.
@@ -67,7 +68,7 @@ class RandomPixelValueScale(RandomTransform):
         )
 
 
-@public
+@export
 class AdjustBrightness(DeterministicTransform):
     r"""
     Callable class for adjusting the brightness of images.
@@ -106,7 +107,7 @@ class AdjustBrightness(DeterministicTransform):
         return image, boxes
 
 
-@public
+@export
 class RandomAdjustBrightness(RandomTransform):
     r"""
     Callable class for randomly adjusting the brightness of images.
@@ -130,7 +131,7 @@ class RandomAdjustBrightness(RandomTransform):
         )
 
 
-@public
+@export
 class AdjustContrast(DeterministicTransform):
     r"""
     Callable class for adjusting the contrast of images.
@@ -169,7 +170,7 @@ class AdjustContrast(DeterministicTransform):
         return image, boxes
 
 
-@public
+@export
 class RandomAdjustContrast(RandomTransform):
     r"""
     Callable class for randomly adjusting the contrast of images.
@@ -193,7 +194,7 @@ class RandomAdjustContrast(RandomTransform):
         )
 
 
-@public
+@export
 class AdjustHue(DeterministicTransform):
     r"""
     Callable class for adjusting the hue of images.
@@ -232,7 +233,7 @@ class AdjustHue(DeterministicTransform):
         return image, boxes
 
 
-@public
+@export
 class RandomAdjustHue(RandomTransform):
     r"""
     Callable class for randomly adjusting the hue of images.
@@ -256,7 +257,7 @@ class RandomAdjustHue(RandomTransform):
         )
 
 
-@public
+@export
 class AdjustSaturation(DeterministicTransform):
     r"""
     Callable class for adjusting the saturation of images.
@@ -295,7 +296,7 @@ class AdjustSaturation(DeterministicTransform):
         return image, boxes
 
 
-@public
+@export
 class RandomAdjustSaturation(RandomTransform):
     r"""
     Callable class for randomly adjusting the saturation of images.

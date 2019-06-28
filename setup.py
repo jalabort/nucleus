@@ -21,7 +21,7 @@ setup(
         'quilt==2.9.15',
 
         'pandas==0.24.1',
-        'tensorflow-addons==0.3.1',
+        'tensorflow-addons==0.4.0',
 
         # Hudl packages
         'hudl-aws==0.2.1'

@@ -1,8 +1,9 @@
 from enum import Enum
-from public import public
+
+from nucleus.utils import export 
 
 
-@public
+@export
 class BasketballDetectionsLabelColorMap(Enum):
     UNKNOWN = 'black'
     PLAYER = 'blue'
@@ -11,7 +12,7 @@ class BasketballDetectionsLabelColorMap(Enum):
     SUBSTITUTE = 'violet'
 
 
-@public
+@export
 class BasketballJerseysLabelColorMap(Enum):
     UNKNOWN = 'black'
     OCCLUDED = 'blue'

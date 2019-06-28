@@ -3,19 +3,19 @@ from typing import Union, Optional, List, Iterable
 import warnings
 import numpy as np
 import tensorflow as tf
-from public import public
 
 from nucleus.base import Serializable
 from nucleus.visualize import BoxViewer
 from nucleus.types import (
     Num, ParsedBox, Coords, CoordsTensor, ParsedBoxCollection
 )
+from nucleus.utils import export
 
 from . import tools as box_tools
 
 
 # TODO[jalabort]: There are score and label_scores
-@public
+@export
 class Box(Serializable):
     r"""
 
@@ -354,7 +354,7 @@ class Box(Serializable):
         ).render(**kwargs)
 
 
-@public
+@export
 class BoxCollection(Serializable):
     r"""
 

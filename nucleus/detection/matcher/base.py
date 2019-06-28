@@ -37,7 +37,6 @@ class Matcher:
 
     # TODO: docstrings
     @name_scope
-    # @tf.function
     def unmatch(
             self,
             matched_boxes: tf.Tensor,
@@ -66,7 +65,6 @@ class Matcher:
 
     # TODO: docstrings
     @name_scope
-    # @tf.function
     def match(self, boxes: tf.Tensor, anchors: tf.Tensor) -> tf.Tensor:
         r"""
 

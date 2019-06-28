@@ -1,13 +1,12 @@
 from typing import Tuple
 
 import tensorflow as tf
-from public import public
 
-from nucleus.utils import tf_get_shape
+from nucleus.utils import export, tf_get_shape
 
 
 # TODO: Docstrings
-@public
+@export
 def feature_map_shape(
         feature_map: tf.Tensor,
         data_format: str
@@ -38,7 +37,7 @@ def feature_map_shape(
     return batch_size, grid_height, grid_width, n_channels
 
 
-@public
+@export
 def get_prediction_tensor_shape(
         feature_map: tf.Tensor,
         data_format: str
