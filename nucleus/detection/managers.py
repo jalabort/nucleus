@@ -4,9 +4,10 @@ from abc import abstractmethod
 from pathlib import Path
 from stringcase import snakecase
 import tensorflow as tf
-from public import public
 from tensorflow.python.keras.utils import conv_utils
 from tensorflow.python.tools.freeze_graph import freeze_graph
+
+from nucleus.utils import export
 
 from .heads import create_yolo_head
 from .anchors import AnchorParameters, yolo_anchor_parameters
@@ -541,7 +542,7 @@ class DetectorManager(ModelManager):
         """
 
 
-@public
+@export
 class YoloManager(DetectorManager):
 
     def __init__(

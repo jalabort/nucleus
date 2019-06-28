@@ -1,7 +1,8 @@
 import tensorflow as tf
 
-from public import public
 from stringcase import snakecase
+
+from nucleus.utils import export
 
 
 # TODO: All these layers could be a simple lambda layers, however we had
@@ -9,7 +10,7 @@ from stringcase import snakecase
 
 
 # TODO: Document me!
-@public
+@export
 class PreprocessingLayer(tf.keras.layers.Layer):
     r"""
 
@@ -44,7 +45,7 @@ class PreprocessingLayer(tf.keras.layers.Layer):
 
 
 # TODO: Document me!
-@public
+@export
 class MobileNetPreprocessingLayer(PreprocessingLayer):
     r"""
 
@@ -64,7 +65,7 @@ class MobileNetPreprocessingLayer(PreprocessingLayer):
 
 
 # TODO: Document me!
-@public
+@export
 class MobileNetV2PreprocessingLayer(PreprocessingLayer):
     r"""
 
@@ -84,7 +85,7 @@ class MobileNetV2PreprocessingLayer(PreprocessingLayer):
 
 
 # TODO: Document me!
-@public
+@export
 class NasNetMobilePreprocessingLayer(PreprocessingLayer):
     r"""
 
@@ -104,7 +105,7 @@ class NasNetMobilePreprocessingLayer(PreprocessingLayer):
 
 
 # TODO: Document me!
-@public
+@export
 class DenseNetPreprocessingLayer(PreprocessingLayer):
     r"""
 
@@ -124,7 +125,7 @@ class DenseNetPreprocessingLayer(PreprocessingLayer):
 
 
 # TODO: Document me!
-@public
+@export
 class XceptionPreprocessingLayer(PreprocessingLayer):
     r"""
 
@@ -144,7 +145,7 @@ class XceptionPreprocessingLayer(PreprocessingLayer):
 
 
 # TODO: Document me!
-@public
+@export
 class InceptionV3PreprocessingLayer(PreprocessingLayer):
     r"""
 
@@ -164,7 +165,7 @@ class InceptionV3PreprocessingLayer(PreprocessingLayer):
 
 
 # TODO: Document me!
-@public
+@export
 class ResNet50PreprocessingLayer(PreprocessingLayer):
     r"""
 

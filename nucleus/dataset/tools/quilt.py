@@ -3,11 +3,12 @@ from typing import Optional, Iterable
 import quilt
 import numpy as np
 import pandas as pd
-from public import public
 from tempfile import NamedTemporaryFile
 
+from nucleus.utils import export
 
-@public
+
+@export
 def get_pkg(
         user: str,
         package: str,
@@ -32,7 +33,7 @@ def get_pkg(
     return quilt.load(pkg_path)
 
 
-@public
+@export
 def decode_df_columns(
         df: pd.DataFrame,
         column_keys: Iterable
@@ -61,7 +62,7 @@ def decode_df_columns(
     return df
 
 
-@public
+@export
 def get_df(
         user: str,
         package: str,
@@ -90,7 +91,7 @@ def get_df(
     return df
 
 
-@public
+@export
 def update_pkg(
         df: pd.DataFrame,
         user: str,

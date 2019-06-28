@@ -1,11 +1,10 @@
 from typing import Tuple
 
 import tensorflow as tf
-from public import public
 from abc import ABC, abstractmethod
 
 from nucleus.box import unpad_tensor
-from nucleus.utils import name_scope, tf_get_shape
+from nucleus.utils import export, name_scope, tf_get_shape
 
 
 # TODO: Transforms seem to be faster without @tf.function?
@@ -190,7 +189,7 @@ class RandomTransform(Transform):
 
 
 # TODO: Better docstring!
-@public
+@export
 class RandomApplyTransform(Transform):
     r"""
     Abstract base class for defining random data augmentation callable classes

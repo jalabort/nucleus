@@ -1,8 +1,9 @@
 from enum import Enum
-from public import public
+
+from nucleus.utils import export
 
 
-@public
+@export
 class DatasetKeys(Enum):
     NAME = 'name'
     CACHE = 'cache'
@@ -13,19 +14,19 @@ class DatasetKeys(Enum):
     N_BOXES = 'n_boxes'
 
 
-@public
+@export
 class DatasetListKeys(Enum):
     LABELS = 'labels'
     BOXES = 'boxes'
     BOXES_LABELS = 'boxes_labels'
 
 
-@public
+@export
 class DatasetSplitKeys(Enum):
     RANDOM = 'split_random'
 
 
-@public
+@export
 class DatasetPartitionKeys(Enum):
     TEST = 'test'
     VAL = 'val'

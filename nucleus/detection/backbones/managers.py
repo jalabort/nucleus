@@ -2,9 +2,10 @@ from typing import Optional, Union, Sequence, Tuple
 
 import tensorflow as tf
 from pathlib import Path
-from public import public
 from abc import abstractmethod
 from stringcase import pascalcase
+
+from nucleus.utils import export
 
 from nucleus.detection.managers import ModelManager
 
@@ -157,7 +158,7 @@ class DenseNetManager(BackboneManager):
 
 
 # TODO: Document me!
-@public
+@export
 class MobileNetManager(BackboneManager):
 
     @property
@@ -206,7 +207,7 @@ class MobileNetManager(BackboneManager):
 
 
 # TODO: Document me!
-@public
+@export
 class MobileNetV2Manager(BackboneManager):
 
     @property
@@ -255,7 +256,7 @@ class MobileNetV2Manager(BackboneManager):
 
 
 # TODO: Document me!
-@public
+@export
 class NasNetMobileManager(BackboneManager):
 
     @property
@@ -272,7 +273,7 @@ class NasNetMobileManager(BackboneManager):
 
 
 # TODO: Document me!
-@public
+@export
 class DenseNet121Manager(DenseNetManager):
 
     @property
@@ -283,7 +284,7 @@ class DenseNet121Manager(DenseNetManager):
 
 
 # TODO: Document me!
-@public
+@export
 class DenseNet169Manager(DenseNetManager):
 
     @property
@@ -294,7 +295,7 @@ class DenseNet169Manager(DenseNetManager):
 
 
 # TODO: Document me!
-@public
+@export
 class DenseNet201Manager(DenseNetManager):
 
     @property
@@ -305,7 +306,7 @@ class DenseNet201Manager(DenseNetManager):
 
 
 # TODO: Document me!
-@public
+@export
 class XceptionManager(BackboneManager):
 
     @property
@@ -322,7 +323,7 @@ class XceptionManager(BackboneManager):
 
 
 # TODO: Document me!
-@public
+@export
 class InceptionV3Manager(BackboneManager):
 
     @property
@@ -339,7 +340,7 @@ class InceptionV3Manager(BackboneManager):
 
 
 # TODO: Document me!
-@public
+@export
 class ResNet50Manager(BackboneManager):
 
     @property

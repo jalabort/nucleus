@@ -1,54 +1,53 @@
 from typing import Union, Tuple
 
 import tensorflow as tf
-from public import public
 
-from nucleus.utils import name_scope, tf_get_shape
+from nucleus.utils import export, name_scope, tf_get_shape
 
 
-@public
+@export
 @name_scope
 def ijhw_to_yx(ijhw: tf.Tensor) -> tf.Tensor:
     return ijhw[..., :2] + ijhw[..., 2:4] / 2
 
 
-@public
+@export
 @name_scope
 def ijhw_to_yxhw(ijhw: tf.Tensor) -> tf.Tensor:
     return tf.concat([ijhw_to_yx(ijhw), ijhw[..., 2:]], axis=-1)
 
 
-@public
+@export
 @name_scope
 def ijhw_to_kl(ijhw: tf.Tensor) -> tf.Tensor:
     return ijhw[..., :2] + ijhw[..., 2:4]
 
 
-@public
+@export
 @name_scope
 def ijhw_to_ijkl(ijhw: tf.Tensor) -> tf.Tensor:
     return tf.concat([ijhw[..., :2], ijhw_to_kl(ijhw), ijhw[..., 4:]], axis=-1)
 
 
-@public
+@export
 @name_scope
 def yxhw_to_ij(yxhw: tf.Tensor) -> tf.Tensor:
     return yxhw[..., :2] - yxhw[..., 2:4] / 2
 
 
-@public
+@export
 @name_scope
 def yxhw_to_ijhw(yxhw: tf.Tensor) -> tf.Tensor:
     return tf.concat([yxhw_to_ij(yxhw), yxhw[..., 2:]], axis=-1)
 
 
-@public
+@export
 @name_scope
 def yxhw_to_hw(yxhw: tf.Tensor) -> tf.Tensor:
     return yxhw[..., :2] + yxhw[..., 2:4] / 2
 
 
-@public
+@export
 @name_scope
 def yxhw_to_ijkl(yxhw: tf.Tensor) -> tf.Tensor:
     return tf.concat(
@@ -57,34 +56,34 @@ def yxhw_to_ijkl(yxhw: tf.Tensor) -> tf.Tensor:
     )
 
 
-@public
+@export
 @name_scope
 def ijkl_to_hw(ijkl: tf.Tensor) -> tf.Tensor:
     return ijkl[..., :2] - ijkl[..., 2:4]
 
 
-@public
+@export
 @name_scope
 def ijkl_to_ijhw(ijkl: tf.Tensor) -> tf.Tensor:
     return tf.concat([ijkl[..., :2], ijkl_to_hw(ijkl), ijkl[..., 4:]], axis=-1)
 
 
-@public
+@export
 @name_scope
 def ijkl_to_xy(ijkl: tf.Tensor) -> tf.Tensor:
     return ijkl[..., :2] + ijkl_to_hw(ijkl) / 2
 
 
-@public
+@export
 @name_scope
-def ijkl_to_xy(ijkl: tf.Tensor) -> tf.Tensor:
+def ijkl_to_xywh(ijkl: tf.Tensor) -> tf.Tensor:
     return tf.concat(
-        [ijkl_to_hw(ijkl), ijkl_to_hw(ijkl), ijkl[..., 4:]],
+        [ijkl_to_xy(ijkl), ijkl_to_hw(ijkl), ijkl[..., 4:]],
         axis=-1
     )
 
 
-@public
+@export
 @name_scope
 def swap_axes_order(coords: tf.Tensor) -> tf.Tensor:
     coord_indices = [1, 0, 3, 2]
@@ -93,7 +92,7 @@ def swap_axes_order(coords: tf.Tensor) -> tf.Tensor:
     return coords[..., indices]
 
 
-@public
+@export
 @name_scope
 def scale_coords(
         coords: tf.Tensor,
@@ -109,7 +108,7 @@ def scale_coords(
     return tf.concat([coord, coords[..., 4:]], axis=-1)
 
 
-@public
+@export
 @name_scope
 def match_up_tensors(
         tensor_a: tf.Tensor,
@@ -173,7 +172,7 @@ def match_up_tensors(
     return transposed_a, transposed_b
 
 
-@public
+@export
 @name_scope
 def calculate_intersections(
         ijhw_a: tf.Tensor,
@@ -207,7 +206,7 @@ def calculate_intersections(
     return tf.reduce_prod(intersection_hw, axis=-1)
 
 
-@public
+@export
 @name_scope
 def calculate_unions(
         ijhw_a: tf.Tensor,
@@ -235,7 +234,7 @@ def calculate_unions(
     return a_areas + b_areas - intersections
 
 
-@public
+@export
 @name_scope
 def calculate_ious(
         ijhw_a: tf.Tensor,
@@ -263,7 +262,7 @@ def calculate_ious(
     return intersections / (a_areas + b_areas - intersections)
 
 
-@public
+@export
 @name_scope
 def pad_tensor(
         tensor: tf.Tensor,
@@ -293,7 +292,7 @@ def pad_tensor(
     return tf.concat([tensor, padding], axis=0)
 
 
-@public
+@export
 @name_scope
 def unpad_tensor(
         tensor: tf.Tensor,
@@ -325,7 +324,7 @@ def unpad_tensor(
     ]
 
 
-@public
+@export
 @name_scope
 def fix_tensor_length(
         tensor: tf.Tensor,
@@ -357,7 +356,7 @@ def fix_tensor_length(
     return tensor
 
 
-@public
+@export
 @name_scope
 def filter_boxes(
         boxes: tf.Tensor,
@@ -416,7 +415,7 @@ def filter_boxes(
     return boxes
 
 
-@public
+@export
 @name_scope
 def flip_boxes_left_right(
         boxes: tf.Tensor

@@ -1,18 +1,15 @@
 from typing import Union, Tuple
 
 import tensorflow as tf
-from public import public
 
 from nucleus.box import (
     match_up_tensors, calculate_ious, ijhw_to_yxhw, ijhw_to_yx
 )
-from nucleus.utils import tf_get_shape
-
-from ..data_format import get_prediction_tensor_shape
+from nucleus.utils import export, tf_get_shape
 
 
 # TODO: Add max_box_size as an argument
-@public
+@export
 def match_boxes_iou(
         boxes: tf.Tensor,
         anchors: tf.Tensor,
@@ -175,7 +172,7 @@ def match_boxes_iou(
     return ijhw_to_yxhw(matched_boxes), ijhw_to_yxhw(matched_anchors)
 
 
-@public
+@export
 def match_boxes_distance(
         boxes: tf.Tensor,
         anchors: tf.Tensor,
@@ -349,7 +346,7 @@ def match_boxes_distance(
 
 
 # TODO: Currently not used
-@public
+@export
 def match_all_boxes(
         all_boxes: tf.Tensor,
         anchors: tf.Tensor,
@@ -397,7 +394,7 @@ def match_all_boxes(
     return tf.stack(matched_all_boxes), tf.stack(matched_all_anchors)
 
 
-@public
+@export
 def combine_boxes_ssd(
         matched_boxes: tf.Tensor,
         matched_anchors: tf.Tensor,
@@ -440,7 +437,7 @@ def combine_boxes_ssd(
     )
 
 
-@public
+@export
 def combine_boxes_yolo(
         matched_boxes: tf.Tensor,
         matched_anchors: tf.Tensor,
@@ -475,7 +472,7 @@ def combine_boxes_yolo(
     )
 
 
-@public
+@export
 def combine_boxes_reinspect(
         matched_boxes: tf.Tensor,
         matched_anchors: tf.Tensor,
@@ -511,7 +508,7 @@ def combine_boxes_reinspect(
 
 
 # TODO: Rewrite docs
-@public
+@export
 def combine_boxes(
         matched_boxes: tf.Tensor,
         matched_anchors: tf.Tensor,
@@ -556,7 +553,7 @@ def combine_boxes(
     )
 
 
-@public
+@export
 def combine_yx_ssd(boxes: tf.Tensor, anchors: tf.Tensor) -> tf.Tensor:
     r"""
     Combines matched yx coordinates of the ground truth bounding boxes with
@@ -589,7 +586,7 @@ def combine_yx_ssd(boxes: tf.Tensor, anchors: tf.Tensor) -> tf.Tensor:
     return (boxes[..., :2] - anchors[..., :2]) / anchors[..., 2:4]
 
 
-@public
+@export
 def combine_yx_yolo(boxes: tf.Tensor, anchors: tf.Tensor) -> tf.Tensor:
     r"""
     Combines matched yx coordinates of the ground truth bounding boxes with
@@ -617,7 +614,7 @@ def combine_yx_yolo(boxes: tf.Tensor, anchors: tf.Tensor) -> tf.Tensor:
     return (boxes[..., :2] - anchors[..., :2]) / anchors[..., 4:6] + 0.5
 
 
-@public
+@export
 def combine_yx_reinspect(boxes: tf.Tensor, anchors: tf.Tensor) -> tf.Tensor:
     r"""
     Combines matched yx coordinates of the ground truth bounding boxes with
@@ -645,7 +642,7 @@ def combine_yx_reinspect(boxes: tf.Tensor, anchors: tf.Tensor) -> tf.Tensor:
     return boxes[..., :2] - anchors[..., :2]
 
 
-@public
+@export
 def combine_hw_sdd(boxes: tf.Tensor, anchors: tf.Tensor) -> tf.Tensor:
     r"""
     Combines matched hw coordinates of the ground truth bounding boxes with
@@ -684,7 +681,7 @@ def combine_hw_sdd(boxes: tf.Tensor, anchors: tf.Tensor) -> tf.Tensor:
     return tf.math.log(boxes[..., 2:4] / anchors[..., 2:4])
 
 
-@public
+@export
 def combine_hw_reinspect(boxes: tf.Tensor, anchors: tf.Tensor) -> tf.Tensor:
     r"""
     Combines matched hw coordinates of the ground truth bounding boxes with
@@ -715,7 +712,7 @@ def combine_hw_reinspect(boxes: tf.Tensor, anchors: tf.Tensor) -> tf.Tensor:
 
 
 # TODO: Rewrite docs
-@public
+@export
 def extract_boxes_ssd(
         matched_boxes: tf.Tensor,
         matched_anchors: tf.Tensor,
@@ -759,7 +756,7 @@ def extract_boxes_ssd(
 
 
 # TODO: Rewrite docs
-@public
+@export
 def extract_boxes_yolo(
         matched_boxes: tf.Tensor,
         matched_anchors: tf.Tensor,
@@ -795,7 +792,7 @@ def extract_boxes_yolo(
 
 
 # TODO: Rewrite docs
-@public
+@export
 def extract_boxes_reinspect(
         matched_boxes: tf.Tensor,
         matched_anchors: tf.Tensor,
@@ -831,7 +828,7 @@ def extract_boxes_reinspect(
 
 
 # TODO: Rewrite docs
-@public
+@export
 def extract_boxes(
         matched_boxes: tf.Tensor,
         matched_anchors: tf.Tensor,
@@ -871,7 +868,7 @@ def extract_boxes(
 
 
 # TODO: Rewrite docs
-@public
+@export
 def extract_yx_ssd(boxes: tf.Tensor, anchors: tf.Tensor) -> tf.Tensor:
     r"""
     Combines matched yx coordinates of the ground truth bounding boxes with
@@ -905,7 +902,7 @@ def extract_yx_ssd(boxes: tf.Tensor, anchors: tf.Tensor) -> tf.Tensor:
 
 
 # TODO: Rewrite docs
-@public
+@export
 def extract_yx_yolo(boxes: tf.Tensor, anchors: tf.Tensor) -> tf.Tensor:
     r"""
     Combines matched yx coordinates of the ground truth bounding boxes with
@@ -933,7 +930,7 @@ def extract_yx_yolo(boxes: tf.Tensor, anchors: tf.Tensor) -> tf.Tensor:
     return (boxes[..., :2] - 0.5) * anchors[..., 4:6] + anchors[..., :2]
 
 # TODO: Rewrite docs
-@public
+@export
 def extract_yx_reinspect(
         boxes: tf.Tensor,
         anchors: tf.Tensor
@@ -965,7 +962,7 @@ def extract_yx_reinspect(
 
 
 # TODO: Rewrite docs
-@public
+@export
 def extract_hw_sdd(boxes: tf.Tensor, anchors: tf.Tensor) -> tf.Tensor:
     r"""
     Combines matched hw coordinates of the ground truth bounding boxes with
@@ -1005,7 +1002,7 @@ def extract_hw_sdd(boxes: tf.Tensor, anchors: tf.Tensor) -> tf.Tensor:
 
 
 # TODO: Rewrite docs
-@public
+@export
 def extract_hw_reinspect(
         boxes: tf.Tensor,
         anchors: tf.Tensor
@@ -1039,7 +1036,7 @@ def extract_hw_reinspect(
 
 
 # TODO: Improve docs
-@public
+@export
 def unmatch_boxes(matched_boxes: tf.Tensor) -> tf.Tensor:
     r"""
     Extracts real valid bounding boxes from matched boxes.

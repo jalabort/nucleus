@@ -2,18 +2,17 @@ from typing import Optional, Union, Tuple, Sequence
 
 import stringcase
 import tensorflow as tf
-from public import public
 from tensorflow.python.keras.utils import conv_utils
 
 from nucleus.box import fix_tensor_length, unpad_tensor, ijhw_to_ijkl
-from nucleus.utils import name_scope
+from nucleus.utils import export, name_scope
 
 from .matcher import YoloMatcher
 from .anchors import create_anchors
 from .data_format import get_prediction_tensor_shape
 
 
-@public
+@export
 class BnConv2D(tf.keras.layers.Layer):
     r"""
 
@@ -59,7 +58,7 @@ class BnConv2D(tf.keras.layers.Layer):
         return self.batch_norm(x)
 
 
-@public
+@export
 class DarkNetConv(BnConv2D):
     r"""
 
@@ -91,7 +90,7 @@ class DarkNetConv(BnConv2D):
         )
 
 
-@public
+@export
 class DarkNetBlock(tf.keras.layers.Layer):
     r"""
 
@@ -275,7 +274,7 @@ class DetectorInferenceLayer(tf.keras.layers.Layer):
 
 
 # TODO: Document me!
-@public
+@export
 class YoloInferenceLayer(DetectorInferenceLayer):
     r"""
 

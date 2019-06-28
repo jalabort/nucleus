@@ -3,13 +3,15 @@ from typing import Optional, Union, List, Dict
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from public import public
+
+from nucleus.utils import export
 
 from .base import QuiltDataset
 from .keys import DatasetKeys
 
 
-@public
+# TODO[@jalabort]: This needs revisiting
+@export
 class BasketballJerseysDataset(QuiltDataset):
     r"""
 

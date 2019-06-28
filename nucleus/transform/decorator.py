@@ -1,13 +1,13 @@
 from copy import deepcopy
-from public import public
 from functools import wraps
 from tensorflow.python.util import tf_decorator
 
 from nucleus.image import Image
 from nucleus.box import BoxCollection
+from nucleus.utils import export
 
 
-@public
+@export
 def image_transform(arg):
     r"""
     Decorator that makes it possible to pass a nucleus image to a function

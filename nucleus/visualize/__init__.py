@@ -3,7 +3,7 @@ from .color_maps import (
 )
 from .matplotlib import (
     MatplotlibImageViewer as ImageViewer,
-    MatplotlibImageCollectionViewer as ImageCollectionViewer,
     MatplotlibBoxViewer as BoxViewer,
-    MatplotlibBoxCollectionViewer as BoxCollectionViewer
 )
+
+__all__ = [*color_maps.__all__, *matplotlib.__all__]

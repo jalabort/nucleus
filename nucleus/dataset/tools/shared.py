@@ -1,14 +1,14 @@
 from typing import Union, Iterable, Dict
 
 import pandas as pd
-from public import public
 
 from nucleus.types import Num
+from nucleus.utils import export
 
 from ..keys import DatasetKeys
 
 
-@public
+@export
 def create_df_from_examples(
         examples: Iterable[Dict[str, Union[Num, str]]]
 ) -> pd.DataFrame:

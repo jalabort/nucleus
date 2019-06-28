@@ -4,7 +4,6 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 from pathlib import Path
-from public import public
 from warnings import warn
 from concurrent.futures import ThreadPoolExecutor
 
@@ -14,13 +13,13 @@ from nucleus.base import Serializable, LazyList
 from nucleus.image import Image
 from nucleus.box import Box
 from nucleus.types import ParsedDataset
-from nucleus.utils import progress_bar
+from nucleus.utils import export, progress_bar
 
 from .keys import DatasetKeys, DatasetListKeys, DatasetSplitKeys, DatasetPartitionKeys
 from .tools import vq as vq_tools, watson as watson_tools, quilt as quilt_tools
 
 
-@public
+@export
 class BaseDataset(Serializable):
     r"""
     Dataset base class.
@@ -265,6 +264,35 @@ class BaseDataset(Serializable):
     def __iter__(self) -> Tuple[pd.Series, Image]:
         for index in range(len(self)):
             yield self[index]
+
+    def n_partition_examples(
+            self,
+            partition: Union[DatasetPartitionKeys, str],
+            split_column: Union[DatasetSplitKeys, str] = None,
+    ) -> int:
+        r"""
+        Returns the number of examples of a particular partition key of a
+        particular split column.
+
+        Parameters
+        ----------
+        partition
+            The partition key of the dataset split for which we want to
+            count the number of examples.
+        split_column
+            The column containing the dataset split.
+        """
+        if split_column is None:
+            split_column = DatasetSplitKeys.RANDOM
+        else:
+            split_column = DatasetSplitKeys(split_column)
+
+        if self.df.get(split_column.value) is None:
+            raise ValueError()
+
+        partition = DatasetPartitionKeys(partition)
+
+        return len(self.df[self.df[split_column.value] == partition.value])
 
     # TODO: Allow images to be gzip compressed?
     def upload_images_to_s3(
@@ -787,7 +815,7 @@ class BaseDataset(Serializable):
         image.view(**image_args)
 
 
-@public
+@export
 class VqDataset(BaseDataset):
     r"""
     """
@@ -919,7 +947,7 @@ class VqDataset(BaseDataset):
         )
 
 
-@public
+@export
 class WatsonDataset(VqDataset):
     r"""
     """
@@ -986,7 +1014,7 @@ class WatsonDataset(VqDataset):
         )
 
 
-@public
+@export
 class QuiltDataset(BaseDataset):
     r"""
     """

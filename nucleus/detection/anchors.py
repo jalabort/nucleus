@@ -1,10 +1,14 @@
-from typing import Union, Sequence, Dict
+from typing import Union, Sequence
 
 import tensorflow as tf
-from public import public
+
+from nucleus.utils import export
 
 
-@public
+__all__ = ['yolo_anchor_parameters']
+
+
+@export
 class AnchorParameters:
     """
     The parameters that define how anchor boxes are generated.
@@ -37,11 +41,10 @@ class AnchorParameters:
 
 
 yolo_anchor_parameters = AnchorParameters(scales=[1, 3, 4], ratios=[.5, 1, 2])
-public(yolo_anchor_parameters)
 
 
 # TODO: Document me!
-@public
+@export
 def create_anchors(
         # anchor_parameters: AnchorParameters,
         scales: Union[float, Sequence[float], tf.Tensor],

@@ -4,7 +4,9 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.python.keras import backend as K
 
-from nucleus.box import unpad_tensor
+from nucleus.utils import export
+
+# from nucleus.box import unpad_tensor
 
 
 # class TensorBoardImage(tf.keras.callbacks.TensorBoard):
@@ -40,6 +42,7 @@ from nucleus.box import unpad_tensor
 
 
 # TODO: Should we rewrite this with pure tensorflow?
+@export
 class CyclicLR(tf.keras.callbacks.Callback):
     r"""
     This callback implements a cyclical learning rate policy (CLR).

@@ -3,15 +3,14 @@ from typing import Tuple
 import tensorflow as tf
 import tensorflow_addons as tfa
 from math import pi
-from public import public
 
 from nucleus.box import filter_boxes, ijhw_to_ijkl, ijkl_to_ijhw
-from nucleus.utils import tf_get_shape
+from nucleus.utils import export, tf_get_shape
 
 from .base import DeterministicTransform, RandomTransform
 
 
-@public
+@export
 class Pan(DeterministicTransform):
     r"""
     Callable class for panning images and bounding boxes.
@@ -66,7 +65,7 @@ class Pan(DeterministicTransform):
         return image, boxes
 
 
-@public
+@export
 class RandomPan(RandomTransform):
     r"""
     Callable class for randomly panning images and bounding boxes.
@@ -90,7 +89,7 @@ class RandomPan(RandomTransform):
         )
 
 
-@public
+@export
 class Rotate(DeterministicTransform):
     r"""
     Callable class for rotating images and bounding boxes.
@@ -185,7 +184,7 @@ class Rotate(DeterministicTransform):
         return image, boxes
 
 
-@public
+@export
 class RandomRotate(RandomTransform):
     r"""
     Callable class for randomly rotating images and bounding boxes.

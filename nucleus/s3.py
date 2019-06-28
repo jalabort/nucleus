@@ -3,10 +3,13 @@ from typing import Optional, Tuple, List
 import re
 import boto3
 
+from .utils import export
+
 
 s3_path_regex = re.compile('s3://([^/]*)/(.*)')
 
 
+@export
 def parse_s3_url(url: str) -> List[Optional[str]]:
     r"""
     Parse S3 Url into parts.
@@ -66,6 +69,7 @@ def parse_s3_url(url: str) -> List[Optional[str]]:
     return list(map(lambda x: x.strip('/'), pieces))
 
 
+@export
 def is_s3_path(path: str) -> bool:
     r"""
 
@@ -80,6 +84,7 @@ def is_s3_path(path: str) -> bool:
     return True if path.startswith('s3://') else False
 
 
+@export
 def parse_s3_path(path: str) -> Tuple[Optional[str], Optional[str]]:
     """
     Parses an s3 path of the form s3://<bucket>/<key> into bucket and
@@ -103,6 +108,7 @@ def parse_s3_path(path: str) -> Tuple[Optional[str], Optional[str]]:
     return groups[0], groups[1]
 
 
+@export
 def get_signed_s3_url(
         s3_path: str,
         expiry_seconds: int = 3600

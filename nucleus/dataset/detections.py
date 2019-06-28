@@ -2,11 +2,11 @@ from typing import Optional, Union, List, Dict
 
 import tensorflow as tf
 from pathlib import Path
-from public import public
 
 from nucleus.image import Image
 from nucleus.box import tools as box_tools
 from nucleus.types import ParsedDataset
+from nucleus.utils import export
 
 from .base import QuiltDataset
 from .keys import DatasetKeys
@@ -14,7 +14,7 @@ from .encode import _bytes_feature, _int64_feature
 
 
 # TODO: Rethink this class
-@public
+@export
 class BasketballDetectionsDataset(QuiltDataset):
     r"""
 

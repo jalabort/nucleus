@@ -4,20 +4,19 @@ import re
 import json
 import boto3
 import pandas as pd
-from public import public
 from concurrent.futures import ThreadPoolExecutor
 
 from hudl_aws.s3 import read_from_s3
 
 from nucleus.types import Num
-from nucleus.utils import progress_bar
+from nucleus.utils import export, progress_bar
 
 from ..keys import DatasetKeys
 
 from .shared import create_df_from_examples
 
 
-@public
+@export
 def get_job_keys(bucket: str, key: str, pattern: str) -> Iterable[str]:
     r"""
 
@@ -44,7 +43,7 @@ def get_job_keys(bucket: str, key: str, pattern: str) -> Iterable[str]:
                 yield key_path
 
 
-@public
+@export
 def get_jobs(
         bucket: str,
         key: str,
@@ -118,7 +117,7 @@ def _get_jobs_sequential(bucket, keys, show_progress):
         yield json.load(read_from_s3(bucket, key))
 
 
-@public
+@export
 def create_examples_from_jobs(
         jobs: Iterable[Dict[str, Iterable]]
 ) -> Iterable[Dict[str, Union[Num, str]]]:
@@ -154,7 +153,7 @@ def create_examples_from_jobs(
             }
 
 
-@public
+@export
 def get_box_from_parsed(parsed: Dict) -> List[float]:
     r"""
 
@@ -181,7 +180,7 @@ def get_box_from_parsed(parsed: Dict) -> List[float]:
     return [i, j, h, w]
 
 
-@public
+@export
 def create_df_from_s3(
         bucket: str,
         key: Union[List[str], str],

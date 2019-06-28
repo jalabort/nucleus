@@ -4,7 +4,6 @@ import os
 import numpy as np
 import tensorflow as tf
 from pathlib import Path
-from public import public
 from warnings import warn
 from urllib.request import urlopen
 from PIL import Image as PilImage
@@ -15,11 +14,12 @@ from nucleus.visualize import ImageViewer
 # TODO: Switch to python-aws whenever possible
 from nucleus.s3 import is_s3_path, get_signed_s3_url
 from nucleus.types import ParsedImage
+from nucleus.utils import export
 
 from . import tools as img_tools
 
 
-@public
+@export
 class Image(Serializable):
     r"""
 

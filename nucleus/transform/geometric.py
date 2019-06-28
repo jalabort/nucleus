@@ -1,18 +1,17 @@
 from typing import Union, Tuple, Sequence
 
 import tensorflow as tf
-from public import public
 
 from nucleus.box import (
     pad_tensor, unpad_tensor, filter_boxes, flip_boxes_left_right,
     ijhw_to_yxhw, scale_coords
 )
-from nucleus.utils import tf_get_shape
+from nucleus.utils import export, tf_get_shape
 
 from .base import DeterministicTransform, RandomTransform
 
 
-@public
+@export
 class HorizontalFlip(DeterministicTransform):
     r"""
     Callable class for horizontally flipping images and bounding boxes.
@@ -49,7 +48,7 @@ class HorizontalFlip(DeterministicTransform):
         return image, boxes
 
 
-@public
+@export
 class Zoom(DeterministicTransform):
     r"""
     Callable class for zooming, in and out, images and bounding boxes.
@@ -123,7 +122,7 @@ class Zoom(DeterministicTransform):
         return image, boxes
 
 
-@public
+@export
 class RandomZoom(RandomTransform):
     r"""
     Callable class for randomly zooming, in and out, images and bounding boxes.
@@ -150,7 +149,7 @@ class RandomZoom(RandomTransform):
         )
 
 
-@public
+@export
 class JitterBoxes(DeterministicTransform):
     r"""
     Callable class for jittering the bounding boxes associated to an images.
@@ -195,7 +194,7 @@ class JitterBoxes(DeterministicTransform):
         return image, boxes
 
 
-@public
+@export
 class RandomJitterBoxes(RandomTransform):
     r"""
     Callable class for randomly jittering the bounding boxes associated to
@@ -221,7 +220,7 @@ class RandomJitterBoxes(RandomTransform):
 
 
 # TODO: Update to use TF2.0 control flow operations
-@public
+@export
 class CropAroundBox(DeterministicTransform):
     r"""
     Callable class for ...
@@ -373,7 +372,7 @@ class CropAroundBox(DeterministicTransform):
         return image, boxes
 
 
-@public
+@export
 class RandomCropAroundBox(RandomTransform):
     r"""
     Callable class for randomly ...
