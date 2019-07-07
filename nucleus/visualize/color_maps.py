@@ -1,7 +1,10 @@
-import enum
+from enum import Enum
+
+from nucleus.utils import export 
 
 
-class BasketballDetectionLabelColorMap(enum.Enum):
+@export
+class BasketballDetectionsLabelColorMap(Enum):
     UNKNOWN = 'black'
     PLAYER = 'blue'
     REFEREE = 'green'
@@ -9,7 +12,8 @@ class BasketballDetectionLabelColorMap(enum.Enum):
     SUBSTITUTE = 'violet'
 
 
-class BasketballJerseyLabelColorMap(enum.Enum):
+@export
+class BasketballJerseysLabelColorMap(Enum):
     UNKNOWN = 'black'
     OCCLUDED = 'blue'
     PARTIAL = 'green'

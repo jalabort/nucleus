@@ -1,8 +1,9 @@
 from typing import Optional, List
 
-import enum
 import numpy as np
 import tensorflow as tf
+
+from nucleus.utils import export
 
 
 def _parse_cmap(cmap_name=None, image_shape_len=3):
@@ -136,6 +137,7 @@ class MatplotlibRenderer:
         self.figure.clf()
 
 
+@export
 class MatplotlibImageViewer(MatplotlibRenderer):
 
     def __init__(self, figure_id, new_figure, pixels, labels):
@@ -198,12 +200,12 @@ class MatplotlibImageViewer(MatplotlibRenderer):
             caption = ''
             if len(labels) > 0 and len(scores) > 0:
                 caption = '\n'.join(
-                    f'{l} : {s}' for l, s in zip(labels, scores)
+                    f'{l} : {s:.2f}' for l, s in zip(labels, scores)
                 )
             elif len(labels) > 0:
                 caption = '\n'.join(f'{l}' for l in labels)
             elif len(scores) > 0:
-                caption = '\n'.join(f'{s}' for s in scores)
+                caption = '\n'.join(f'{s:.2f}' for s in scores)
 
             if caption != '':
                 ax.set_title(
@@ -211,19 +213,6 @@ class MatplotlibImageViewer(MatplotlibRenderer):
                     fontsize=caption_text_size,
                     color=caption_text_color
                 )
-                # corrector = 0
-                # x, y = self.pixels.shape[1] / 2 + corrector, 0 - corrector
-                # vertical_alignment = 'top'
-                # horizontal_alignment = 'left'
-                #
-                # t = ax.text(x, y, caption,
-                #             verticalalignment=vertical_alignment,
-                #             horizontalalignment=horizontal_alignment,
-                #             color=caption_text_color,
-                #             size=caption_text_size)
-                # t.set_bbox(dict(facecolor=caption_face_color,
-                #                 edgecolor=caption_edge_color,
-                #                 alpha=caption_box_alpha))
 
         # set axes options
         _set_axes_options(
@@ -308,6 +297,7 @@ box_default_style2 = dict(
 )
 
 
+@export
 class MatplotlibBoxViewer(MatplotlibRenderer):
     r"""
 
@@ -373,7 +363,7 @@ class MatplotlibBoxViewer(MatplotlibRenderer):
     ):
         from matplotlib import patches, patheffects
         import matplotlib.pyplot as plt
-        from nucleus.box import ijhw_to_ijkl, scale_coords
+        from nucleus.box import tools as box_tools
 
         if skip_labels and all(label in skip_labels for label in self.labels):
             return self
@@ -383,14 +373,15 @@ class MatplotlibBoxViewer(MatplotlibRenderer):
 
         if label_color_map is not None:
             label = self.labels[0].upper()
-            edge_color = label_color_map[label].value
-            face_color = label_color_map[label].value
-            caption_edge_color = label_color_map[label].value
-            caption_face_color = label_color_map[label].value
+            color = label_color_map[label].value
+            edge_color = color
+            face_color = color
+            caption_edge_color = color
+            caption_face_color = color
 
-        ijhw = scale_coords(coords=self.ijhw, resolution=resolution)
+        ijhw = box_tools.scale_coords(coords=self.ijhw, resolution=resolution)
 
-        ijkl = ijhw_to_ijkl(ijhw)
+        ijkl = box_tools.ijhw_to_ijkl(ijhw)
 
         # parse axes limits1)
         min_x, min_y = np.minimum(ijkl[:2], (0, 0))
@@ -436,12 +427,12 @@ class MatplotlibBoxViewer(MatplotlibRenderer):
             caption = ''
             if len(labels) > 0 and len(scores) > 0:
                 caption = '\n'.join(
-                    f'{l} : {s}' for l, s in zip(labels, scores)
+                    f'{l} : {s:.2f}' for l, s in zip(labels, scores)
                 )
             elif len(labels) > 0:
                 caption = '\n'.join(f'{l}' for l in labels)
             elif len(scores) > 0:
-                caption = '\n'.join(f'{s}' for s in scores)
+                caption = '\n'.join(f'{s:.2f}' for s in scores)
 
             if caption != '':
                 corrector = 0
@@ -477,8 +468,3 @@ class MatplotlibBoxViewer(MatplotlibRenderer):
         _set_figure_size(self.figure, figure_size)
 
         return self
-
-
-# TODO[jalabort]: Is this really needed?
-class MatplotlibBoxCollectionViewer:
-    pass

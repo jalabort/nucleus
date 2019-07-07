@@ -1,0 +1,6 @@
+name: nucleus_env
+dependencies:
+  - python==3.6 # Cannot use higher atm because of tensorflow-addons
+  - conda-forge::jupyter_contrib_nbextensions==0.5.1
+  - pip:
+    - jupyter==1.0.0

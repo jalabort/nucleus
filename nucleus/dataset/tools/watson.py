@@ -1,28 +1,22 @@
-from typing import Optional, Union, Iterable, Dict
+from typing import Optional, Union, List, Iterable, Dict
 
 import re
 import json
 import boto3
 import pandas as pd
+from concurrent.futures import ThreadPoolExecutor
 
 from hudl_aws.s3 import read_from_s3
 
 from nucleus.types import Num
-from nucleus.utils import progress_bar
+from nucleus.utils import export, progress_bar
 
 from ..keys import DatasetKeys
 
 from .shared import create_df_from_examples
 
 
-__all__ = [
-    'get_job_keys',
-    'get_jobs',
-    'create_examples_from_jobs',
-    'create_df_from_s3'
-]
-
-
+@export
 def get_job_keys(bucket: str, key: str, pattern: str) -> Iterable[str]:
     r"""
 
@@ -49,11 +43,13 @@ def get_job_keys(bucket: str, key: str, pattern: str) -> Iterable[str]:
                 yield key_path
 
 
+@export
 def get_jobs(
         bucket: str,
         key: str,
         pattern: str,
         n_jobs: Optional[int] = None,
+        parallel: bool = True,
         show_progress: bool = False
 ) -> Iterable[Dict[str, Iterable]]:
     r"""
@@ -64,21 +60,64 @@ def get_jobs(
     key
     pattern
     n_jobs
+    parallel
     show_progress
 
     Returns
     -------
 
     """
-    keys = get_job_keys(bucket=bucket, key=key, pattern=pattern)
+    keys = list(get_job_keys(bucket=bucket, key=key, pattern=pattern))[:n_jobs]
 
+    if parallel:
+        return _get_jobs_parallel(bucket, keys, show_progress)
+    else:
+        return _get_jobs_sequential(bucket, keys, show_progress)
+
+
+def _get_jobs_parallel(bucket, keys, show_progress):
+    r"""
+
+    Parameters
+    ----------
+    bucket
+    keys
+    show_progress
+
+    Returns
+    -------
+
+    """
+    def _load(key):
+        return json.load(read_from_s3(bucket, key))
+
+    with ThreadPoolExecutor() as executor:
+        threads = executor.map(_load, keys)
+        if show_progress:
+            threads = progress_bar(threads, total=len(keys))
+        return list(threads)
+
+
+def _get_jobs_sequential(bucket, keys, show_progress):
+    r"""
+
+    Parameters
+    ----------
+    bucket
+    keys
+    show_progress
+
+    Returns
+    -------
+
+    """
     if show_progress:
-        keys = progress_bar(list(keys)[:n_jobs])
-
+        keys = progress_bar(keys)
     for key in keys:
         yield json.load(read_from_s3(bucket, key))
 
 
+@export
 def create_examples_from_jobs(
         jobs: Iterable[Dict[str, Iterable]]
 ) -> Iterable[Dict[str, Union[Num, str]]]:
@@ -99,12 +138,7 @@ def create_examples_from_jobs(
             labels_list = []
             for parsed in example['boxes']:
                 # TODO: y and x here represent j and i
-                ijhw = [
-                    parsed['y'],
-                    parsed['x'],
-                    parsed['height'],
-                    parsed['width']
-                ]
+                ijhw = get_box_from_parsed(parsed=parsed)
                 labels = [parsed['label']]
                 ijhw_list.append(ijhw)
                 labels_list.append(labels)
@@ -119,11 +153,40 @@ def create_examples_from_jobs(
             }
 
 
+@export
+def get_box_from_parsed(parsed: Dict) -> List[float]:
+    r"""
+
+    Parameters
+    ----------
+    parsed
+
+    Returns
+    -------
+
+    """
+    i = parsed['y']
+    j = parsed['x']
+    h = parsed['height']
+    w = parsed['width']
+
+    if h < 0:
+        i += h
+        h = -h
+    if w < 0:
+        j += w
+        w = -w
+
+    return [i, j, h, w]
+
+
+@export
 def create_df_from_s3(
         bucket: str,
-        key: str,
+        key: Union[List[str], str],
         pattern: str,
         n_jobs: Optional[int] = None,
+        parallel: bool = True,
         show_progress: bool = False
 ) -> pd.DataFrame:
     r"""
@@ -134,19 +197,26 @@ def create_df_from_s3(
     key
     pattern
     n_jobs
+    parallel
     show_progress
 
     Returns
     -------
 
     """
-    jobs = get_jobs(
-        bucket=bucket,
-        key=key,
-        pattern=pattern,
-        n_jobs=n_jobs,
-        show_progress=show_progress
-    )
-    examples = create_examples_from_jobs(jobs)
-    df = create_df_from_examples(examples)
-    return df
+    key = [key] if isinstance(key, str) else key
+
+    all_jobs = []
+    for key in progress_bar(key):
+        jobs = get_jobs(
+            bucket=bucket,
+            key=key,
+            pattern=pattern,
+            n_jobs=n_jobs,
+            parallel=parallel,
+            show_progress=show_progress
+        )
+        all_jobs += jobs
+
+    examples = create_examples_from_jobs(all_jobs)
+    return create_df_from_examples(examples)

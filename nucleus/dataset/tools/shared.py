@@ -3,15 +3,12 @@ from typing import Union, Iterable, Dict
 import pandas as pd
 
 from nucleus.types import Num
+from nucleus.utils import export
 
 from ..keys import DatasetKeys
 
 
-__all__ = [
-    'create_df_from_examples',
-]
-
-
+@export
 def create_df_from_examples(
         examples: Iterable[Dict[str, Union[Num, str]]]
 ) -> pd.DataFrame:

@@ -6,8 +6,13 @@ import tensorflow as tf
 
 __all__ = [
     'Num',
-    'Coords', 'CoordsTensor',
-    'ParsedBox', 'ParsedBoxCollection', 'ParsedImage', 'ParsedDataset'
+    'Coords',
+    'CoordsTensor',
+    'Parsed',
+    'ParsedBox',
+    'ParsedBoxCollection',
+    'ParsedImage',
+    'ParsedDataset'
 ]
 
 
@@ -15,9 +20,11 @@ Num = Union[int, float]
 
 Coords = Union[tf.Tensor, np.ndarray, List[Num]]
 CoordsTensor = Union[tf.Tensor, np.ndarray, List[Coords]]
+
+Parsed = Union[List, Dict]
 ParsedBox = Dict[str, Union[Num, str]]
 ParsedBoxCollection = List[Union[str, ParsedBox]]
 
-# TODO[jalabort]: Double check these 2
+# TODO: Double check differences between these 2. Is something wrong?
 ParsedImage = Dict[str, Union[str, ParsedBoxCollection]]
 ParsedDataset = Dict[str, Union[str, ParsedBoxCollection]]

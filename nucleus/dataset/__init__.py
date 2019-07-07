@@ -1,3 +1,7 @@
-from .base import *
-from .datasets import *
-from .tools import *
+from .base import BaseDataset, VqDataset, WatsonDataset, QuiltDataset
+from .detections import BasketballDetectionsDataset
+# TODO[@jalabort]: This needs revisiting
+from .jerseys import BasketballJerseysDataset
+from .keys import (
+    DatasetKeys, DatasetListKeys, DatasetSplitKeys, DatasetPartitionKeys
+)

@@ -8,10 +8,11 @@ import warnings
 import functools
 import collections
 
+from nucleus.types import Parsed
+from nucleus.utils import export
 
-Parsed = Union[List, Dict]
 
-
+@export
 class Serializable(abc.ABC):
     r"""
 
@@ -45,12 +46,12 @@ class Serializable(abc.ABC):
         """
         path = pathlib.Path(path)
 
-        if not path.exists():
-            tentative_path = path.parent / '.'.join([path.stem, 'json'])
+        if not path.exists() or path.suffix != '.json':
+            tentative_path = path.parent / f'{path.stem}.json'
             if tentative_path.exists():
                 path = tentative_path
             else:
-                tentative_path = path.parent / '.'.join([path.stem, 'json.gz'])
+                tentative_path = path.parent / f'{path.stem}.json.gz'
                 if tentative_path.exists():
                     path = tentative_path
 
@@ -148,6 +149,7 @@ class Serializable(abc.ABC):
         return path.parent / name
 
 
+@export
 class LazyList(collections.Sequence):
     r"""
     An immutable sequence that provides the ability to lazily access objects.
@@ -169,7 +171,7 @@ class LazyList(collections.Sequence):
     def __init__(self, callables: List[callable]):
         self._callables = callables
 
-    def __getitem__(self, slice_,) :
+    def __getitem__(self, slice_):
         # note that we have to check for iterable *before* __index__ as ndarray
         # has both (but we expect the iteration behavior when slicing)
         if isinstance(slice_, collections.Iterable):
