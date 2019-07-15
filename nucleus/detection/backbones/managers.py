@@ -113,7 +113,7 @@ class BackboneManager(ModelManager):
 
         # Define the backbone network
         backbone: tf.keras.Model = self._backbone_fn(
-            layers=self._patch_keras_layers(),
+            # layers=self._patch_keras_layers(),
             include_top=False,
             input_shape=input_shape,
             input_tensor=x,

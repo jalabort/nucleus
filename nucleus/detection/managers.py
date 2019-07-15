@@ -1,9 +1,9 @@
 from typing import Optional, Union, Sequence
 
+import tensorflow as tf
 from abc import abstractmethod
 from pathlib import Path
 from stringcase import snakecase
-import tensorflow as tf
 from tensorflow.python.keras.utils import conv_utils
 from tensorflow.python.tools.freeze_graph import freeze_graph
 
@@ -17,7 +17,7 @@ from .layers import YoloInferenceLayer
 
 def remove_directory_contents(directory: Path) -> None:
     r"""
-    Removes all the content from a directory
+    Removes all contents from a directory.
 
     Parameters
     ----------
@@ -47,7 +47,7 @@ class ModelManager:
     """
     def __init__(
             self,
-            cache: Union[Path, str] = Path.home() / '.hudlrd'
+            cache: Union[Path, str] = Path.home() / '.hudlrd' / 'model_cache'
     ) -> None:
         self.cache = cache
 
@@ -74,7 +74,7 @@ class ModelManager:
         self._cache = Path(cache).absolute()
         self._model_path = self.cache / self.model_name
         self._inference_model_path = self.cache / self.inference_model_name
-        self.cache.mkdir(parents=True, exist_ok=True)
+        self._cache.mkdir(parents=True, exist_ok=True)
 
     @property
     def model_path(self):
@@ -482,6 +482,20 @@ class DetectorManager(ModelManager):
         """
         return conv_utils.normalize_data_format(data_format)
 
+    @abstractmethod
+    def create_model(*args, **kwargs):
+        r"""
+
+        Parameters
+        ----------
+        args
+        kwargs
+
+        Returns
+        -------
+
+        """
+
     def _create_sequential_model(
             self,
             backbone: tf.keras.Model,
@@ -653,4 +667,49 @@ class YoloManager(DetectorManager):
             name=f'inference_{self.model_name}'
         )
 
+    def match_fn(self) -> callable:
+
+        anchors = create_anchors(
+            scales=self.anchor_parameters.scales,
+            ratios=self.anchor_parameters.ratios,
+            n_anchors=self.anchor_parameters.n_anchors,
+            grid_height=33,
+            grid_width=60
+        )
+
+        return lambda image, boxes: (
+            image,
+            self.create_matcher(iou_threshold=0.75).match(
+                boxes=boxes, anchors=anchors
+            )
+        )
+
+    def train_model(
+            self,
+            model: tf.keras.Model,
+            ds_train: tf.data.Dataset,
+            ds_val: tf.data.Dataset,
+            optimizer: tf.keras.optimizers.Optimizer,
+            loss: Union[tf.keras.losses.Loss, callable],
+            metrics: Sequence[Union[tf.keras.losses.Loss, callable]],
+            callbacks: Sequence[tf.keras.callbacks.Callback],
+            n_epochs: int,
+            initial_epoch: int = 0
+    ):
+        r""""""
+        model.compile(
+            optimizer=optimizer,
+            loss=loss,
+            metrics=metrics
+        )
+
+        history = model.fit(
+            ds_train,
+            epochs=n_epochs + initial_epoch,
+            initial_epoch=initial_epoch,
+            validation_data=ds_val,
+            callbacks=callbacks,
+        )
+
+        return history
 
