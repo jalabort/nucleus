@@ -13,7 +13,7 @@ from nucleus.utils import export, tf_get_shape
 def match_boxes_iou(
         boxes: tf.Tensor,
         anchors: tf.Tensor,
-        iou_threshold: float
+        iou_threshold: float = 0.75
 ) -> Tuple[tf.Tensor, tf.Tensor]:
     r"""
     Associates ground truth bounding boxes with anchor boxes.

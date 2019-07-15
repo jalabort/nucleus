@@ -1,25 +1,25 @@
 from typing import Union, List, Iterable, Sequence
 
-import abc
 import json
 import gzip
-import pathlib
-import warnings
-import functools
 import collections
+from pathlib import Path
+from warnings import warn
+from functools import partial
+from abc import abstractmethod, ABC
 
 from nucleus.types import Parsed
 from nucleus.utils import export
 
 
 @export
-class Serializable(abc.ABC):
+class Serializable(ABC):
     r"""
 
     """
 
     @classmethod
-    @abc.abstractmethod
+    @abstractmethod
     def deserialize(cls, parsed: Parsed) -> object:
         r"""
 
@@ -33,7 +33,7 @@ class Serializable(abc.ABC):
         """
 
     @classmethod
-    def load(cls, path: Union[str, pathlib.Path]) -> object:
+    def load(cls, path: Union[str, Path]) -> object:
         r"""
 
         Parameters
@@ -44,7 +44,7 @@ class Serializable(abc.ABC):
         -------
 
         """
-        path = pathlib.Path(path)
+        path = Path(path)
 
         if not path.exists() or path.suffix != '.json':
             tentative_path = path.parent / f'{path.stem}.json'
@@ -64,7 +64,7 @@ class Serializable(abc.ABC):
 
         return cls.deserialize(parsed)
 
-    @abc.abstractmethod
+    @abstractmethod
     def serialize(self, **kwargs) -> Parsed:
         r"""
 
@@ -75,7 +75,7 @@ class Serializable(abc.ABC):
 
     def save(
             self,
-            path: Union[str, pathlib.Path],
+            path: Union[str, Path],
             compress: bool = False
     ) -> None:
         r"""
@@ -98,7 +98,7 @@ class Serializable(abc.ABC):
     def _save(
         self,
         parsed: Parsed,
-        path: Union[str, pathlib.Path],
+        path: Union[str, Path],
         compress: bool = False
     ) -> None:
         r"""
@@ -122,7 +122,7 @@ class Serializable(abc.ABC):
                 f.write(json.dumps(parsed, indent=2).encode('utf-8'))
 
     @staticmethod
-    def _check_path(path: pathlib.Path) -> pathlib.Path:
+    def _check_path(path: Path) -> Path:
         r"""
 
         Parameters
@@ -133,13 +133,13 @@ class Serializable(abc.ABC):
         -------
 
         """
-        path = pathlib.Path(path)
+        path = Path(path)
 
         stem = path.stem
         suffix = path.suffix[1:]
         if suffix != 'json':
             if suffix is not None:
-                warnings.warn(
+                warn(
                     f'Path suffix {suffix} not supported. Path suffix will be '
                     f'changed to `json`.'
                 )
@@ -171,7 +171,7 @@ class LazyList(collections.Sequence):
     def __init__(self, callables: List[callable]):
         self._callables = callables
 
-    def __getitem__(self, slice_,):
+    def __getitem__(self, slice_):
         # note that we have to check for iterable *before* __index__ as ndarray
         # has both (but we expect the iteration behavior when slicing)
         if isinstance(slice_, collections.Iterable):
@@ -220,7 +220,7 @@ class LazyList(collections.Sequence):
             # The identity function
             def f(i):
                 return i
-        return cls([functools.partial(f, x) for x in iterable])
+        return cls([partial(f, x) for x in iterable])
 
     @classmethod
     def from_index_callable(cls, f: callable, n_elements: int) -> 'LazyList':
@@ -243,7 +243,7 @@ class LazyList(collections.Sequence):
             A LazyList where each element returns the underlying indexable
             object wrapped by ``f``.
         """
-        return cls([functools.partial(f, i) for i in range(n_elements)])
+        return cls([partial(f, i) for i in range(n_elements)])
 
     def __add__(self, other: Sequence) -> 'LazyList':
         r"""
