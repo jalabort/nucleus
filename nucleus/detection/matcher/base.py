@@ -71,17 +71,16 @@ class Matcher:
         Parameters
         ----------
         boxes
-            ``(batch_size, n_boxes, n_dims)`` tensor representing the
-            bounding boxes.
+            ``(n_boxes, n_dims)`` tensor representing the bounding boxes.
         anchors
-            ``(batch_size, height, width, n_anchors, 4)`` tensor representing
-            the anchor boxes.
+            ``(height, width, n_anchors, 4)`` tensor representing the
+            anchor boxes.
 
         Returns
         -------
         matched_boxes
-            ``(batch_size, height, width, n_anchors, n_dims)`` tensor
-            representing the matched bounding boxes.
+            ``(height, width, n_anchors, n_dims)`` tensor representing the
+            matched bounding boxes.
         """
         matched_boxes, matched_anchors = self.match_boxes_fn(
             boxes=boxes,
