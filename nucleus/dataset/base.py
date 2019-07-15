@@ -5,7 +5,6 @@ import pandas as pd
 import tensorflow as tf
 from pathlib import Path
 from warnings import warn
-from stringcase import snakecase
 from concurrent.futures import ThreadPoolExecutor
 
 from hudl_aws.s3 import write_to_s3, ContentType, S3Location
@@ -27,6 +26,7 @@ class BaseDataset(Serializable):
 
     Parameters
     ----------
+    name
     df
     cache
 
@@ -42,7 +42,7 @@ class BaseDataset(Serializable):
             self,
             name: str,
             df: pd.DataFrame,
-            cache: Union[str, Path] = Path.home() / '.hudlrd' / 'dataset_cache'
+            cache: Union[str, Path] = './dataset_cache'
     ) -> None:
         self.name = name
         self.df = df
@@ -570,7 +570,7 @@ class BaseDataset(Serializable):
         indices = self.df[self.df[split_column.value] == partition.value].index
 
         file_name = f'{partition.value}.tfrecord'
-        file_path = self.dataset_path / split_column.value / file_name
+        file_path = self.cache_path / split_column.value / file_name
         if file_path.exists() and not rewrite:
             warn(
                 f'{file_path} already exist. Set the rewrite argument to True '
@@ -829,7 +829,7 @@ class VqDataset(BaseDataset):
             n_jobs: Optional[int] = None,
             parallel: bool = True,
             show_progress: bool = True,
-            cache: Union[str, Path] = Path.home() / '.hudlrd' / 'dataset_cache'
+            cache: Union[str, Path] = './dataset_cache'
     ) -> None:
         self.name = name
         self.bucket = bucket
@@ -893,6 +893,7 @@ class VqDataset(BaseDataset):
         -------
 
         """
+        name = parsed.pop('name')
         bucket = parsed.pop('bucket')
         key = parsed.pop('key')
         n_jobs = parsed.pop('n_jobs')
@@ -901,7 +902,7 @@ class VqDataset(BaseDataset):
         df = df.reset_index(drop=True)
         df.index = df.index.astype(int)
 
-        ds: VqDataset = BaseDataset(df=df)
+        ds: VqDataset = BaseDataset(name=name, df=df)
         ds.__class__ = VqDataset
         ds.bucket = bucket
         ds.key = key
@@ -960,18 +961,24 @@ class WatsonDataset(VqDataset):
             n_jobs: Optional[int] = None,
             parallel: bool = True,
             show_progress: bool = True,
-            cache: Union[str, Path] = Path.home() / '.hudlrd' / 'dataset_cache'
+            cache: Union[str, Path] = './dataset_cache'
     ) -> None:
-        super().__init__(
-            name=name,
-            bucket=bucket,
-            key=key,
-            pattern=pattern,
-            n_jobs=n_jobs,
+        self.name = name
+        self.bucket = bucket
+        self.key = [key] if isinstance(key, str) else key
+        self.pattern = pattern
+        self.n_jobs = n_jobs
+
+        df = self._create_df_from_s3(
+            bucket=self.bucket,
+            key=self.key,
+            pattern=self.pattern,
+            n_jobs=self.n_jobs,
             parallel=parallel,
-            show_progress=show_progress,
-            cache=cache
+            show_progress=show_progress
         )
+
+        super().__init__(name=name, df=df, cache=cache)
 
     @staticmethod
     def _create_df_from_s3(
@@ -1018,7 +1025,7 @@ class QuiltDataset(BaseDataset):
             package: str,
             hash_key: str = None,
             force: bool = True,
-            cache: Union[str, Path] = Path.home() / '.hudlrd' / 'dataset_cache'
+            cache: Union[str, Path] = './dataset_cache'
     ) -> None:
         self.user = user
         self.package = package
@@ -1073,11 +1080,11 @@ class QuiltDataset(BaseDataset):
         if package in cls.__dict__ and parsed.pop('package') != cls.package:
             raise RuntimeError()
 
-        dataset = super().deserialize(parsed)
-        dataset.__class__ = cls
-        dataset: cls
-        dataset.hash_key = hash_key
-        return dataset
+        ds = super().deserialize(parsed)
+        ds.__class__ = cls
+        ds: cls
+        ds.hash_key = hash_key
+        return ds
 
     def serialize(self) -> dict:
         r"""

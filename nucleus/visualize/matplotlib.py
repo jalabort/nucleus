@@ -228,10 +228,6 @@ class MatplotlibImageViewer(MatplotlibRenderer):
         return self
 
 
-class MatplotlibImageCollectionViewer:
-    pass
-
-
 box_default_style1 = dict(
     resolution=(1080, 1920),
     label_color=True,

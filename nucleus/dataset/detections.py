@@ -31,7 +31,7 @@ class BasketballDetectionsDataset(QuiltDataset):
             self,
             hash_key: Optional[str] = None,
             force: Optional[bool] = True,
-            cache: Union[str, Path] = Path.home() / '.hudlrd' / 'dataset_cache',
+            cache: Union[str, Path] = './dataset_cache',
             max_serialized_boxes: int = 50
     ) -> None:
         super().__init__(
