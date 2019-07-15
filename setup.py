@@ -6,7 +6,6 @@ setup(
     version='0.0.1',
     author='hudlrd',
     install_requires=[
-        'public==2019.4.13',
         'stringcase==1.2.0',
         'tqdm==4.31.1',
         'boto3==1.9.114',
