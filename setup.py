@@ -7,10 +7,10 @@ setup(
     author='hudlrd',
     install_requires=[
         'stringcase==1.2.0',
-        'tqdm==4.31.1',
-        'boto3==1.9.114',
+        'tqdm==4.32.2',
+        'boto3==1.9.200',
 
-        'altair==2.4.1',
+        'altair==3.1.0',
         'matplotlib==3.0.3',
         'pydot==1.4.1',
         'graphviz==0.10.1',
@@ -19,11 +19,11 @@ setup(
 
         'quilt==2.9.15',
 
-        'pandas==0.24.1',
+        'pandas==0.24.2',
         'tensorflow-addons==0.4.0',
 
         # Hudl packages
-        'hudl-aws==0.2.1'
+        'hudl-aws==0.2.5'
     ],
     extras_require={
         'cpu': ['tensorflow==2.0.0-beta1'],
