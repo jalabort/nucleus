@@ -570,7 +570,7 @@ class BaseDataset(Serializable):
         indices = self.df[self.df[split_column.value] == partition.value].index
 
         file_name = f'{partition.value}.tfrecord'
-        file_path = self.dataset_path / split_column.value / file_name
+        file_path = self.cache_path / split_column.value / file_name
         if file_path.exists() and not rewrite:
             warn(
                 f'{file_path} already exist. Set the rewrite argument to True '
