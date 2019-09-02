@@ -171,7 +171,7 @@ class LazyList(collections.Sequence):
     def __init__(self, callables: List[callable]):
         self._callables = callables
 
-    def __getitem__(self, slice_):
+    def __getitem__(self, slice_,):
         # note that we have to check for iterable *before* __index__ as ndarray
         # has both (but we expect the iteration behavior when slicing)
         if isinstance(slice_, collections.Iterable):

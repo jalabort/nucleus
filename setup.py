@@ -14,7 +14,7 @@ setup(
         'matplotlib>=3.0.3',
         'pydot>=1.4.1',
         'graphviz>=0.10.1',
-
+        
         'pillow>=5.4.1',
 
         'quilt==2.9.15',
@@ -33,5 +33,5 @@ setup(
         'pytest',
         'pytest-cov',
         'coverage'
-    }
+    },
 )
