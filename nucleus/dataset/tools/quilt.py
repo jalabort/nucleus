@@ -13,7 +13,8 @@ def get_pkg(
         user: str,
         package: str,
         hash_key=None,
-        force=True
+        force=True,
+        v3=False
 ) -> pd.DataFrame:
     r"""
 
@@ -29,6 +30,9 @@ def get_pkg(
 
     """
     pkg_path = f'{user}/{package}'
+    if v3:
+        import quilt3
+        return quilt3.Package.install(pkg_path, top_hash=hash_key)
     quilt.install(pkg_path, hash=hash_key, force=force)
     return quilt.load(pkg_path)
 
@@ -68,7 +72,8 @@ def get_df(
         package: str,
         hash_key=None,
         force: bool = True,
-        column_keys: Optional[Iterable] = None
+        column_keys: Optional[Iterable] = None,
+        v3: bool = False
 ) -> pd.DataFrame:
     r"""
 
@@ -84,7 +89,7 @@ def get_df(
     -------
 
     """
-    package = get_pkg(user=user, package=package, hash_key=hash_key, force=force)
+    package = get_pkg(user=user, package=package, hash_key=hash_key, force=force, v3=v3)
     df = package.df()
     if column_keys is not None:
         df = decode_df_columns(df=df, column_keys=column_keys)
@@ -97,7 +102,8 @@ def update_pkg(
         user: str,
         package: str,
         readme: Optional[str] = None,
-        hash_key=None
+        hash_key=None,
+        v3=False
 ):
     r"""
 
@@ -115,24 +121,47 @@ def update_pkg(
     """
     pkg_path = f'{user}/{package}'
 
-    quilt.build(
-        pkg_path,
-        quilt.nodes.GroupNode(dict(
-            author='@hudlrd'
-        ))
-    )
+    if v3:
+        import quilt3
 
-    quilt.build(
-        f'{pkg_path}/df',
-        quilt.nodes.DataNode(None, None, df, {})
-    )
+        pkg = quilt3.Package.browse(pkg_path)
+        pkg.build(name=pkg_path)
 
-    # TODO: warn the user if readme if not provided
-    if readme is not None:
-        with NamedTemporaryFile() as tmp:
-            tmp.write(readme.encode('UTF-8'))
-            tmp.flush()
-            quilt.build(f'{pkg_path}/README', tmp.model_name)
+        df_pkg = quilt3.Package.browse(f'{pkg_path}/df')
+        df_pkg.build(name=f'{pkg_path}/df')
 
-    quilt.login()
-    quilt.push(pkg_path, is_public=True, hash=hash_key)
+        if readme is not None:
+            with NamedTemporaryFile() as tmp:
+                tmp.write(readme.encode('UTF-8'))
+                tmp.flush()
+
+                # NOTE @jinyeom: I'm not sure if I fully understand this part.
+                # How does a temporary file have an attribute called `model_name`?
+                readme_pkg = quilt3.Package.browse(f'{pkg_path}/README')
+                quilt3.build(f'{pkg_path}/README', tmp.model_name)
+
+        quilt3.login()
+        pkg.push(pkg_path)
+
+    else:
+        quilt.build(
+            pkg_path,
+            quilt.nodes.GroupNode(dict(
+                author='@hudlrd'
+            ))
+        )
+
+        quilt.build(
+            f'{pkg_path}/df',
+            quilt.nodes.DataNode(None, None, df, {})
+        )
+
+        # TODO: warn the user if readme if not provided
+        if readme is not None:
+            with NamedTemporaryFile() as tmp:
+                tmp.write(readme.encode('UTF-8'))
+                tmp.flush()
+                quilt.build(f'{pkg_path}/README', tmp.model_name)
+
+        quilt.login()
+        quilt.push(pkg_path, is_public=True, hash=hash_key)
