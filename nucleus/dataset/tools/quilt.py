@@ -95,6 +95,7 @@ def get_df(
 def get_df_v3(
         user: str,
         package: str,
+        registry: str,
         parquet: str,
         hash_key: str = None,
         column_keys: Optional[Iterable] = None
@@ -105,6 +106,7 @@ def get_df_v3(
     ----------
     user
     package
+    registry
     parquet
     hash_key
     column_keys
@@ -114,7 +116,11 @@ def get_df_v3(
 
     """
     import quilt3
-    pkg = quilt3.Package.install(f'{user}/{package}', top_hash=hash_key)
+    pkg = quilt3.Package.install(
+        f'{user}/{package}', 
+        registry=registry, 
+        top_hash=hash_key
+    )
     pkg[parquet].fetch()
     df = pd.read_parquet(parquet)
     if column_keys is not None:
@@ -174,6 +180,7 @@ def update_pkg_v3(
     user: str,
     package: str,
     parquet: str,
+    registry: str,
 ):
     r"""
 
@@ -193,7 +200,7 @@ def update_pkg_v3(
     df.to_parquet(parquet)
     
     pkg_path = f'{user}/{package}'
-    pkg = quilt3.Package.browse(pkg_path)
+    pkg = quilt3.Package.browse(pkg_path, registry=registry)
     pkg.set(parquet)
 
     quilt3.login()

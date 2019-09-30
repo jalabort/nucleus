@@ -1125,16 +1125,22 @@ class Quilt3Dataset(BaseDataset):
             self,
             user: str,
             package: str,
+            parquet: str,
+            registry: str = None,
             hash_key: str = None,
             cache: Union[str, Path] = Path.home() / '.hudlrd' / 'dataset_cache'
     ) -> None:
         self.user = user
         self.package = package
+        self.parquet = parquet
+        self.registry = registry
         self.hash_key = hash_key
 
         df = self._create_df_from_quilt(
             user=user,
             package=package,
+            parquet=parquet,
+            registry=registry,
             hash_key=hash_key
         )
 
@@ -1145,6 +1151,8 @@ class Quilt3Dataset(BaseDataset):
             cls,
             user: str,
             package: str,
+            parquet: str,
+            registry: str = None,
             hash_key: str = None,
     ) -> pd.DataFrame:
         r"""
@@ -1153,6 +1161,8 @@ class Quilt3Dataset(BaseDataset):
         ----------
         user
         package
+        registry
+        parquet
         hash_key
 
         Returns
@@ -1162,6 +1172,8 @@ class Quilt3Dataset(BaseDataset):
         return quilt_tools.get_df_v3(
             user=user,
             package=package,
+            parquet=parquet,
+            registry=registry,
             hash_key=hash_key,
             column_keys=[key.value for key in DatasetListKeys]
         )
@@ -1212,6 +1224,8 @@ class Quilt3Dataset(BaseDataset):
         self.df = quilt_tools.get_df3(
             user=self.user,
             package=self.package,
+            parquet=self.parquet,
+            registry=self.registry,
             hash_key=self.hash_key,
             column_keys=[key.value for key in DatasetListKeys]
         )
