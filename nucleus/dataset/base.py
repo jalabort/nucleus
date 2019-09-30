@@ -1114,3 +1114,104 @@ class QuiltDataset(BaseDataset):
             force=force,
             column_keys=[key.value for key in DatasetListKeys]
         )
+
+
+@export
+class Quilt3Dataset(BaseDataset):
+    r"""
+    """
+    # TODO: Allow instantiation via quilt path
+    def __init__(
+            self,
+            user: str,
+            package: str,
+            hash_key: str = None,
+            cache: Union[str, Path] = Path.home() / '.hudlrd' / 'dataset_cache'
+    ) -> None:
+        self.user = user
+        self.package = package
+        self.hash_key = hash_key
+
+        df = self._create_df_from_quilt(
+            user=user,
+            package=package,
+            hash_key=hash_key
+        )
+
+        super().__init__(name=package, df=df, cache=cache)
+
+    @classmethod
+    def _create_df_from_quilt(
+            cls,
+            user: str,
+            package: str,
+            hash_key: str = None,
+    ) -> pd.DataFrame:
+        r"""
+
+        Parameters
+        ----------
+        user
+        package
+        hash_key
+
+        Returns
+        -------
+
+        """
+        return quilt_tools.get_df_v3(
+            user=user,
+            package=package,
+            hash_key=hash_key,
+            column_keys=[key.value for key in DatasetListKeys]
+        )
+
+    @classmethod
+    def deserialize(cls, parsed: ParsedDataset) -> 'QuiltDataset':
+        user = parsed.pop('user')
+        package = parsed.pop('package')
+        hash_key = parsed.pop('hash_key')
+
+        if user in cls.__dict__ and parsed.pop('user') != cls.user:
+            raise RuntimeError()
+        if package in cls.__dict__ and parsed.pop('package') != cls.package:
+            raise RuntimeError()
+
+        dataset = super().deserialize(parsed)
+        dataset.__class__ = cls
+        dataset: cls
+        dataset.hash_key = hash_key
+        return dataset
+
+    def serialize(self) -> dict:
+        r"""
+
+        Returns
+        -------
+
+        """
+        parsed = super().serialize()
+        parsed['user'] = self.user
+        parsed['package'] = self.package
+        parsed['hash_key'] = self.hash_key
+        return parsed
+
+    def reload_df_from_quilt(
+            self,
+            hash_key=None,
+    ) -> None:
+        r"""
+
+        Parameters
+        ----------
+        hash_key
+        """
+        if hash_key is not None:
+            self.hash_key = hash_key
+
+        self.df = quilt_tools.get_df3(
+            user=self.user,
+            package=self.package,
+            hash_key=self.hash_key,
+            column_keys=[key.value for key in DatasetListKeys]
+        )
