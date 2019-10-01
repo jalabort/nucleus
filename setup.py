@@ -18,6 +18,7 @@ setup(
         'pillow>=5.4.1',
 
         'quilt==2.9.15',
+        'quilt3==3.1.0',
 
         'pandas>=0.24.2',
         'tensorflow-addons>=0.5.0',

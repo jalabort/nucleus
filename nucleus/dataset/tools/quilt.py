@@ -92,12 +92,49 @@ def get_df(
 
 
 @export
+def get_df_v3(
+        user: str,
+        package: str,
+        registry: str,
+        parquet: str,
+        hash_key: str = None,
+        column_keys: Optional[Iterable] = None
+) -> pd.DataFrame:
+    r"""
+
+    Parameters
+    ----------
+    user
+    package
+    registry
+    parquet
+    hash_key
+    column_keys
+
+    Returns
+    -------
+
+    """
+    import quilt3
+    pkg = quilt3.Package.install(
+        f'{user}/{package}', 
+        registry=registry, 
+        top_hash=hash_key
+    )
+    pkg[parquet].fetch()
+    df = pd.read_parquet(parquet)
+    if column_keys is not None:
+        df = decode_df_columns(df=df, column_keys=column_keys)
+    return df
+
+
+@export
 def update_pkg(
         df: pd.DataFrame,
         user: str,
         package: str,
         readme: Optional[str] = None,
-        hash_key=None
+        hash_key=None,
 ):
     r"""
 
@@ -114,7 +151,6 @@ def update_pkg(
 
     """
     pkg_path = f'{user}/{package}'
-
     quilt.build(
         pkg_path,
         quilt.nodes.GroupNode(dict(
@@ -136,3 +172,36 @@ def update_pkg(
 
     quilt.login()
     quilt.push(pkg_path, is_public=True, hash=hash_key)
+
+
+@export
+def update_pkg_v3(
+    df: pd.DataFrame,
+    user: str,
+    package: str,
+    parquet: str,
+    registry: str,
+):
+    r"""
+
+    Parameters
+    ----------
+    df
+    user
+    package
+    hash_key
+
+    Returns
+    -------
+
+    """
+    import quilt3
+
+    df.to_parquet(parquet)
+    
+    pkg_path = f'{user}/{package}'
+    pkg = quilt3.Package.browse(pkg_path, registry=registry)
+    pkg.set(parquet)
+
+    quilt3.login()
+    pkg.push(pkg_path)
