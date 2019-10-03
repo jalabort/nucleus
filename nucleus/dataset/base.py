@@ -652,7 +652,7 @@ class BaseDataset(Serializable):
     def get_ds(
             self,
             partition: Union[DatasetPartitionKeys, str],
-            split_column: Optional[Union[DatasetPartitionKeys, str]] = None,
+            split_column: Optional[Union[DatasetSplitKeys, str]] = None,
             n_examples: Optional[int] = None,
             shuffle: Optional[int] = 100,
             repeat: Optional[int] = 1,
