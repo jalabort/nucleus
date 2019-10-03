@@ -23,7 +23,8 @@ class DatasetListKeys(Enum):
 
 @export
 class DatasetSplitKeys(Enum):
-    RANDOM = 'split_random'
+    RANDOM = 'set_split_random'
+    FEED = 'set_split_feed'
 
 
 @export
