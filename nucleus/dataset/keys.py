@@ -8,17 +8,17 @@ class DatasetKeys(Enum):
     NAME = 'name'
     CACHE = 'cache'
     PATH = 'path'
+    ATTRS = 'attrs'
+    BOXES = 'bbxs'
     LABELS = 'labels'
-    BOXES = 'boxes'
-    BOXES_LABELS = 'boxes_labels'
-    N_BOXES = 'n_boxes'
+    N_BOXES = 'n_bbxs'
 
 
 @export
 class DatasetListKeys(Enum):
+    ATTRS = 'attrs'
+    BOXES = 'bbxs'
     LABELS = 'labels'
-    BOXES = 'boxes'
-    BOXES_LABELS = 'boxes_labels'
 
 
 @export
@@ -29,5 +29,5 @@ class DatasetSplitKeys(Enum):
 @export
 class DatasetPartitionKeys(Enum):
     TEST = 'test'
-    VAL = 'val'
+    DEV = 'dev'
     TRAIN = 'train'

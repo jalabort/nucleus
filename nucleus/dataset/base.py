@@ -230,14 +230,14 @@ class BaseDataset(Serializable):
 
         """
         path = row[DatasetKeys.PATH.value]
-        labels = row.get(DatasetKeys.LABELS.value)
+        attrs = row.get(DatasetKeys.ATTRS.value)
         boxes = row.get(DatasetKeys.BOXES.value)
-        boxes_labels = row.get(DatasetKeys.BOXES_LABELS.value)
+        labels = row.get(DatasetKeys.LABELS.value)
 
         if boxes is not None:
             box_list = [
-                Box(ijhw=ijhw, labels=labels)
-                for ijhw, labels in zip(boxes, boxes_labels)
+                Box(ijhw=ijhw, labels=box_labels)
+                for ijhw, box_labels in zip(boxes, labels)
                 if None not in ijhw and all([c > 0 for c in ijhw[:2]])
             ]
         else:
@@ -245,7 +245,7 @@ class BaseDataset(Serializable):
 
         return Image.from_path(
             path=path,
-            labels=labels,
+            labels=attrs,
             box_collection=box_list
         )
 
@@ -467,7 +467,7 @@ class BaseDataset(Serializable):
             sample = tf.random.uniform((), minval=0, maxval=1)
             if sample <= val_prop:
                 self.df.at[i, DatasetSplitKeys.RANDOM.value] = (
-                    DatasetPartitionKeys.VAL.value
+                    DatasetPartitionKeys.DEV.value
                 )
             if val_prop < sample <= test_prop + val_prop:
                 self.df.at[i, DatasetSplitKeys.RANDOM.value] = (

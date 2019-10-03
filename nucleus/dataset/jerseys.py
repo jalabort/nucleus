@@ -53,10 +53,10 @@ class BasketballJerseysDataset(QuiltDataset):
 
         """
         if label_position is None:
-            label_position = range(len(self.df[DatasetKeys.LABELS.value][0]))
+            label_position = range(len(self.df[DatasetKeys.ATTRS.value][0]))
 
         uniques = [[] for _ in label_position]
-        for labels in self.df[DatasetKeys.LABELS.value]:
+        for labels in self.df[DatasetKeys.ATTRS.value]:
             for i, label in enumerate(np.asanyarray(labels)[label_position]):
                 if label is None:
                     continue
@@ -85,12 +85,12 @@ class BasketballJerseysDataset(QuiltDataset):
             df = self.df
 
         if label_position is None:
-            label_position = range(len(df[DatasetKeys.LABELS.value][0]))
+            label_position = range(len(df[DatasetKeys.ATTRS.value][0]))
         elif isinstance(label_position, int):
             label_position = [label_position]
 
         labels_dict = {}
-        for labels in df[DatasetKeys.LABELS.value]:
+        for labels in df[DatasetKeys.ATTRS.value]:
             for i, label in enumerate(np.asanyarray(labels)[label_position]):
                 if label is None:
                     continue

@@ -207,7 +207,7 @@ class BasketballDetectionsDataset(QuiltDataset):
 
         """
         return self.unique_elements_from_list_column(
-            column=DatasetKeys.BOXES_LABELS.value
+            column=DatasetKeys.LABELS.value
         )
 
     def view_row(self, index: int, image_args: Dict = None):

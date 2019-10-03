@@ -145,9 +145,9 @@ def create_examples_from_jobs(
 
             yield {
                 DatasetKeys.PATH.value: example['source'],
-                DatasetKeys.LABELS.value: example['frameTags'],
+                DatasetKeys.ATTRS.value: example['frameTags'],
                 DatasetKeys.BOXES.value: ijhw_list,
-                DatasetKeys.BOXES_LABELS.value: labels_list,
+                DatasetKeys.LABELS.value: labels_list,
                 DatasetKeys.N_BOXES.value: len(ijhw_list),
                 'src': 'watson'
             }
