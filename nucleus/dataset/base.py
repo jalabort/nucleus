@@ -777,13 +777,17 @@ class BaseDataset(Serializable):
             is_list = True
 
         if is_list:
+            # rows with labels = None (as opposed to []) are not labelled
+            labels_column = self.df[column]
+            labels_column = labels_column[labels_column.notnull()]
+
             # if label_position is None:
             label_position = range(
-                np.max([len(labels) for labels in self.df[column]])
+                np.max([len(labels) for labels in labels_column])
             )
 
             uniques = [[] for _ in label_position]
-            for labels in self.df[column]:
+            for labels in labels_column:
                 for i, label in enumerate(labels):
                     if label is None:
                         continue
