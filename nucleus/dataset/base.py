@@ -5,6 +5,7 @@ import pandas as pd
 import tensorflow as tf
 from pathlib import Path
 from warnings import warn
+from stringcase import snakecase
 from concurrent.futures import ThreadPoolExecutor
 
 from hudl_aws.s3 import write_to_s3, ContentType, S3Location
@@ -26,7 +27,6 @@ class BaseDataset(Serializable):
 
     Parameters
     ----------
-    name
     df
     cache
 
@@ -42,7 +42,7 @@ class BaseDataset(Serializable):
             self,
             name: str,
             df: pd.DataFrame,
-            cache: Union[str, Path] = './dataset_cache'
+            cache: Union[str, Path] = Path.home() / '.hudlrd' / 'dataset_cache'
     ) -> None:
         self.name = name
         self.df = df
@@ -829,7 +829,7 @@ class VqDataset(BaseDataset):
             n_jobs: Optional[int] = None,
             parallel: bool = True,
             show_progress: bool = True,
-            cache: Union[str, Path] = './dataset_cache'
+            cache: Union[str, Path] = Path.home() / '.hudlrd' / 'dataset_cache'
     ) -> None:
         self.name = name
         self.bucket = bucket
@@ -893,7 +893,6 @@ class VqDataset(BaseDataset):
         -------
 
         """
-        name = parsed.pop('name')
         bucket = parsed.pop('bucket')
         key = parsed.pop('key')
         n_jobs = parsed.pop('n_jobs')
@@ -902,7 +901,7 @@ class VqDataset(BaseDataset):
         df = df.reset_index(drop=True)
         df.index = df.index.astype(int)
 
-        ds: VqDataset = BaseDataset(name=name, df=df)
+        ds: VqDataset = BaseDataset(df=df)
         ds.__class__ = VqDataset
         ds.bucket = bucket
         ds.key = key
@@ -961,24 +960,18 @@ class WatsonDataset(VqDataset):
             n_jobs: Optional[int] = None,
             parallel: bool = True,
             show_progress: bool = True,
-            cache: Union[str, Path] = './dataset_cache'
+            cache: Union[str, Path] = Path.home() / '.hudlrd' / 'dataset_cache'
     ) -> None:
-        self.name = name
-        self.bucket = bucket
-        self.key = [key] if isinstance(key, str) else key
-        self.pattern = pattern
-        self.n_jobs = n_jobs
-
-        df = self._create_df_from_s3(
-            bucket=self.bucket,
-            key=self.key,
-            pattern=self.pattern,
-            n_jobs=self.n_jobs,
+        super().__init__(
+            name=name,
+            bucket=bucket,
+            key=key,
+            pattern=pattern,
+            n_jobs=n_jobs,
             parallel=parallel,
-            show_progress=show_progress
+            show_progress=show_progress,
+            cache=cache
         )
-
-        super().__init__(name=name, df=df, cache=cache)
 
     @staticmethod
     def _create_df_from_s3(
@@ -1025,7 +1018,7 @@ class QuiltDataset(BaseDataset):
             package: str,
             hash_key: str = None,
             force: bool = True,
-            cache: Union[str, Path] = './dataset_cache'
+            cache: Union[str, Path] = Path.home() / '.hudlrd' / 'dataset_cache'
     ) -> None:
         self.user = user
         self.package = package
@@ -1080,11 +1073,11 @@ class QuiltDataset(BaseDataset):
         if package in cls.__dict__ and parsed.pop('package') != cls.package:
             raise RuntimeError()
 
-        ds = super().deserialize(parsed)
-        ds.__class__ = cls
-        ds: cls
-        ds.hash_key = hash_key
-        return ds
+        dataset = super().deserialize(parsed)
+        dataset.__class__ = cls
+        dataset: cls
+        dataset.hash_key = hash_key
+        return dataset
 
     def serialize(self) -> dict:
         r"""
@@ -1119,5 +1112,120 @@ class QuiltDataset(BaseDataset):
             package=self.package,
             hash_key=self.hash_key,
             force=force,
+            column_keys=[key.value for key in DatasetListKeys]
+        )
+
+
+@export
+class Quilt3Dataset(BaseDataset):
+    r"""
+    """
+    # TODO: Allow instantiation via quilt path
+    def __init__(
+            self,
+            user: str,
+            package: str,
+            parquet: str,
+            registry: str = None,
+            hash_key: str = None,
+            cache: Union[str, Path] = Path.home() / '.hudlrd' / 'dataset_cache'
+    ) -> None:
+        self.user = user
+        self.package = package
+        self.parquet = parquet
+        self.registry = registry
+        self.hash_key = hash_key
+
+        df = self._create_df_from_quilt(
+            user=user,
+            package=package,
+            parquet=parquet,
+            registry=registry,
+            hash_key=hash_key
+        )
+
+        super().__init__(name=package, df=df, cache=cache)
+
+    @classmethod
+    def _create_df_from_quilt(
+            cls,
+            user: str,
+            package: str,
+            parquet: str,
+            registry: str = None,
+            hash_key: str = None,
+    ) -> pd.DataFrame:
+        r"""
+
+        Parameters
+        ----------
+        user
+        package
+        registry
+        parquet
+        hash_key
+
+        Returns
+        -------
+
+        """
+        return quilt_tools.get_df_v3(
+            user=user,
+            package=package,
+            parquet=parquet,
+            registry=registry,
+            hash_key=hash_key,
+            column_keys=[key.value for key in DatasetListKeys]
+        )
+
+    @classmethod
+    def deserialize(cls, parsed: ParsedDataset) -> 'QuiltDataset':
+        user = parsed.pop('user')
+        package = parsed.pop('package')
+        hash_key = parsed.pop('hash_key')
+
+        if user in cls.__dict__ and parsed.pop('user') != cls.user:
+            raise RuntimeError()
+        if package in cls.__dict__ and parsed.pop('package') != cls.package:
+            raise RuntimeError()
+
+        dataset = super().deserialize(parsed)
+        dataset.__class__ = cls
+        dataset: cls
+        dataset.hash_key = hash_key
+        return dataset
+
+    def serialize(self) -> dict:
+        r"""
+
+        Returns
+        -------
+
+        """
+        parsed = super().serialize()
+        parsed['user'] = self.user
+        parsed['package'] = self.package
+        parsed['hash_key'] = self.hash_key
+        return parsed
+
+    def reload_df_from_quilt(
+            self,
+            hash_key=None,
+    ) -> None:
+        r"""
+
+        Parameters
+        ----------
+        hash_key
+        """
+        if hash_key is not None:
+            self.hash_key = hash_key
+
+        self.df = quilt_tools.get_df3(
+            user=self.user,
+            package=self.package,
+            parquet=self.parquet,
+            registry=self.registry,
+            hash_key=self.hash_key,
             column_keys=[key.value for key in DatasetListKeys]
         )

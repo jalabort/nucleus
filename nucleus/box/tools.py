@@ -59,7 +59,7 @@ def yxhw_to_ijkl(yxhw: tf.Tensor) -> tf.Tensor:
 @export
 @name_scope
 def ijkl_to_hw(ijkl: tf.Tensor) -> tf.Tensor:
-    return ijkl[..., :2] - ijkl[..., 2:4]
+    return ijkl[..., 2:4] - ijkl[..., :2]
 
 
 @export
