@@ -31,30 +31,32 @@ def image_transform(arg):
             img: Image = args[0]
             hwc, box_tensor = arg(
                 img.hwc,
-                img.box_collection.as_tensor(),
+                img.box_collection.as_tensor() if img.box_collection else None,
                 *args[1:],
                 **kwargs
             )
             new_img = deepcopy(img)
             new_img.hwc = hwc
-            new_img.box_collection = BoxCollection.from_tensor(
-                box_tensor, unique_labels=img.box_collection.unique_labels
-            )
+            if box_tensor is not None:
+                new_img.box_collection = BoxCollection.from_tensor(
+                    box_tensor, unique_labels=img.box_collection.unique_labels
+                )
             return new_img
         elif isinstance(args[1], Image):
             img: Image = args[1]
             hwc, box_tensor = arg(
                 args[0],
                 img.hwc,
-                img.box_collection.as_tensor(),
+                img.box_collection.as_tensor() if img.box_collection else None,
                 *args[2:],
                 **kwargs
             )
             new_img = deepcopy(img)
             new_img.hwc = hwc
-            new_img.box_collection = BoxCollection.from_tensor(
-                box_tensor, unique_labels=img.box_collection.unique_labels
-            )
+            if box_tensor is not None:
+                new_img.box_collection = BoxCollection.from_tensor(
+                    box_tensor, unique_labels=img.box_collection.unique_labels
+                )
             return new_img
         else:
             return arg(*args, **kwargs)
