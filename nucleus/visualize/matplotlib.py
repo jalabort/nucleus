@@ -380,8 +380,8 @@ class MatplotlibBoxViewer(MatplotlibRenderer):
         ijkl = box_tools.ijhw_to_ijkl(ijhw)
 
         # parse axes limits1)
-        min_x, min_y = np.minimum(ijkl[:2], (0, 0))
-        max_x, max_y = np.maximum(ijkl[2:4], resolution)
+        min_x, min_y = np.minimum(ijkl[:2].numpy(), (0, 0))
+        max_x, max_y = np.maximum(ijkl[2:4].numpy(), resolution)
         axes_x_limits, axes_y_limits = _parse_axes_limits(
             min_x, max_x, min_y, max_y, axes_x_limits, axes_y_limits
         )

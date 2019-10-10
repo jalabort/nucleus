@@ -4,7 +4,7 @@ import tensorflow as tf
 import tensorflow_addons as tfa
 from math import pi
 
-from nucleus.box import filter_boxes, ijhw_to_ijkl, ijkl_to_ijhw
+from nucleus.box import filter_boxes, ijhw_to_ijkl, ijkl_to_ijhw, scale_coords
 from nucleus.utils import export, tf_get_shape
 
 from .base import DeterministicTransform, RandomTransform
@@ -16,6 +16,9 @@ class Pan(DeterministicTransform):
     Callable class for panning images and bounding boxes.
     """
     n_factors = 2
+
+    def __init__(self, pad: bool = True) -> None:
+        self.pad = pad
 
     def _operation(
             self,
@@ -47,20 +50,21 @@ class Pan(DeterministicTransform):
         dx = tf.cast(width, dtype=tf.float32) * pan_factor[1]
         image = tfa.image.transform(
             image,
-            [1, 0, dx, 0, 1, dy, 0, 0],
+            [1, 0, -dx, 0, 1, -dy, 0, 0],
             interpolation='BILINEAR',
         )
 
-        offsets = tf.stack([dy, dx])
-        boxes = tf.concat(
-            [
-                boxes[..., :2] + offsets,
-                boxes[..., 2:4],
-                boxes[..., 4:]
-            ],
-            axis=-1
-        )
-        boxes = filter_boxes(boxes)
+        if boxes is not None:
+            offsets = tf.stack([pan_factor[0], pan_factor[1]])
+            boxes = tf.concat(
+                [
+                    boxes[..., :2] + offsets,
+                    boxes[..., 2:4],
+                    boxes[..., 4:]
+                ],
+                axis=-1
+            )
+            boxes = filter_boxes(boxes, pad=self.pad)
 
         return image, boxes
 
@@ -76,14 +80,17 @@ class RandomPan(RandomTransform):
 
     max_factor
 
+    pad
+
     """
     def __init__(
             self,
-            min_factor: float = -0.1,
-            max_factor: float = 0.1
+            min_factor: float = -0.2,
+            max_factor: float = 0.2,
+            pad: bool = True
     ) -> None:
         super().__init__(
-            transform=Pan(),
+            transform=Pan(pad=pad),
             min_factor=min_factor,
             max_factor=max_factor
         )
@@ -95,6 +102,9 @@ class Rotate(DeterministicTransform):
     Callable class for rotating images and bounding boxes.
     """
     n_factors = 1
+
+    def __init__(self, pad: bool = True) -> None:
+        self.pad = pad
 
     def _operation(
             self,
@@ -120,66 +130,73 @@ class Rotate(DeterministicTransform):
         rotated_boxes
             The rotated boxes.
         """
-        height, width, _ = tf_get_shape(image)
+        angle = (pi / 180) * angle_factor
+        image = tfa.image.rotate(image, angle, interpolation='BILINEAR')
 
-        angle = (pi / 4) * angle_factor
+        if boxes is not None:
+            height, width, _ = tf_get_shape(image)
+            image_shape = tf.stack([height, width])
 
-        image = tfa.image.rotate(image, -angle, interpolation='BILINEAR')
+            image_center = tf.cast(image_shape, dtype=tf.float32) / 2
+            image_centers = tf.tile(image_center, [2])
 
-        image_center = tf.cast(tf.stack([height, width]), dtype=tf.float32) / 2
-        image_centers = tf.tile(image_center, [2])
+            centered_coords = ijhw_to_ijkl(
+                scale_coords(boxes[..., :4], image_shape)
+            ) - image_centers
 
-        centered_boxes = ijhw_to_ijkl(boxes) - image_centers
+            tl = centered_coords[..., 0:2]
+            tr = tf.stack([
+                centered_coords[..., 0], centered_coords[..., 3]
+            ], axis=-1)
+            bl = tf.stack([
+                centered_coords[..., 2], centered_coords[..., 1]
+            ], axis=-1)
+            br = centered_coords[..., 2:4]
 
-        tl = centered_boxes[..., 0:2]
-        tr = tf.stack([
-            centered_boxes[..., 0], centered_boxes[..., 3]
-        ], axis=-1)
-        bl = tf.stack([
-            centered_boxes[..., 2], centered_boxes[..., 0]
-        ], axis=-1)
-        br = centered_boxes[..., 2:4]
+            rotated_tl = tf.stack([
+                tf.cos(angle) * tl[..., 0] - tf.sin(angle) * tl[..., 1],
+                tf.sin(angle) * tl[..., 0] + tf.cos(angle) * tl[..., 1]
+            ], axis=-1)
+            rotated_tr = tf.stack([
+                tf.cos(angle) * tr[..., 0] - tf.sin(angle) * tr[..., 1],
+                tf.sin(angle) * tr[..., 0] + tf.cos(angle) * tr[..., 1]
+            ], axis=-1)
+            rotated_bl = tf.stack([
+                tf.cos(angle) * bl[..., 0] - tf.sin(angle) * bl[..., 1],
+                tf.sin(angle) * bl[..., 0] + tf.cos(angle) * bl[..., 1]
+            ], axis=-1)
+            rotated_br = tf.stack([
+                tf.cos(angle) * br[..., 0] - tf.sin(angle) * br[..., 1],
+                tf.sin(angle) * br[..., 0] + tf.cos(angle) * br[..., 1]
+            ], axis=-1)
 
-        rotated_tl = tf.stack([
-            tf.cos(angle) * tl[..., 0] - tf.sin(angle) * tl[..., 1],
-            tf.sin(angle) * tl[..., 0] + tf.cos(angle) * tl[..., 1]
-        ], axis=-1)
-        rotated_tr = tf.stack([
-            tf.cos(angle) * tr[..., 0] - tf.sin(angle) * tr[..., 1],
-            tf.sin(angle) * tr[..., 0] + tf.cos(angle) * tr[..., 1]
-        ], axis=-1)
-        rotated_bl = tf.stack([
-            tf.cos(angle) * bl[..., 0] - tf.sin(angle) * bl[..., 1],
-            tf.sin(angle) * bl[..., 0] + tf.cos(angle) * bl[..., 1]
-        ], axis=-1)
-        rotated_br = tf.stack([
-            tf.cos(angle) * br[..., 0] - tf.sin(angle) * br[..., 1],
-            tf.sin(angle) * br[..., 0] + tf.cos(angle) * br[..., 1]
-        ], axis=-1)
+            rotated_boxes = tf.concat([
+                rotated_tl,
+                rotated_tr,
+                rotated_bl,
+                rotated_br
+            ], axis=-1)
 
-        rotated_boxes = tf.concat([
-            rotated_tl,
-            rotated_tr,
-            rotated_bl,
-            rotated_br
-        ], axis=-1)
+            ys = rotated_boxes[..., 0::2]
+            xs = rotated_boxes[..., 1::2]
 
-        ys = rotated_boxes[..., 0::2]
-        xs = rotated_boxes[..., 1::2]
+            aligned_tl = tf.stack([
+                tf.reduce_min(ys, axis=-1),
+                tf.reduce_min(xs, axis=-1)
+            ], axis=-1)
+            aligned_br = tf.stack([
+                tf.reduce_max(ys, axis=-1),
+                tf.reduce_max(xs, axis=-1)
+            ], axis=-1)
 
-        aligned_tl = tf.stack([
-            tf.reduce_min(ys, axis=-1),
-            tf.reduce_min(xs, axis=-1)
-        ], axis=-1)
-        aligned_br = tf.stack([
-            tf.reduce_max(ys, axis=-1),
-            tf.reduce_max(xs, axis=-1)
-        ], axis=-1)
+            aligned_coords = tf.concat([aligned_tl, aligned_br], axis=-1)
 
-        aligned_boxes = tf.concat([aligned_tl, aligned_br], axis=-1)
-
-        boxes = ijkl_to_ijhw(aligned_boxes + image_centers)
-        boxes = filter_boxes(boxes, width, height)
+            boxes = tf.concat([
+                ijkl_to_ijhw(aligned_coords + image_centers),
+                boxes[..., 4:]
+            ], axis=-1)
+            boxes = scale_coords(boxes, 1 / image_shape)
+            boxes = filter_boxes(boxes, pad=self.pad)
 
         return image, boxes
 
@@ -191,18 +208,17 @@ class RandomRotate(RandomTransform):
 
     Parameters
     ----------
-    min_factor
+    max_angle
 
-    max_factor
-
+    pad
     """
     def __init__(
             self,
-            min_factor: float = -0.1,
-            max_factor: float = 0.1
+            max_angle: float = 10,
+            pad: bool = True
     ) -> None:
         super().__init__(
-            transform=Rotate(),
-            min_factor=min_factor,
-            max_factor=max_factor
+            transform=Rotate(pad=pad),
+            min_factor=-max_angle,
+            max_factor=max_angle
         )

@@ -139,8 +139,8 @@ class RandomZoom(RandomTransform):
     def __init__(
             self,
             pad: bool = True,
-            min_factor: float = 0.8,
-            max_factor: float = 1.2
+            min_factor: float = 0.25,
+            max_factor: float = 1.25
     ) -> None:
         super().__init__(
             transform=Zoom(pad=pad),

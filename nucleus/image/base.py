@@ -412,7 +412,7 @@ class Image(Serializable):
         ).render(**kwargs)
 
         if view_boxes and self.box_collection:
-            box_args['resolution'] = tuple(self.resolution)
+            box_args['resolution'] = tuple(self.resolution.as_list())
             self.box_collection.view(
                 figure_id=figure_id,
                 new_figure=new_figure,
