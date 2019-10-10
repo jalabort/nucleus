@@ -86,10 +86,13 @@ def ijkl_to_xywh(ijkl: tf.Tensor) -> tf.Tensor:
 @export
 @name_scope
 def swap_axes_order(coords: tf.Tensor) -> tf.Tensor:
-    coord_indices = [1, 0, 3, 2]
-    other_indices = list(range(len(coord_indices), tf_get_shape(coords)[-1]))
-    indices = coord_indices + other_indices
-    return coords[..., indices]
+    return tf.concat([
+        coords[..., 1][None],
+        coords[..., 0][None],
+        coords[..., 3][None],
+        coords[..., 2][None],
+        coords[..., 4:]
+    ], axis=-1)
 
 
 @export

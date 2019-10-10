@@ -236,9 +236,10 @@ class BaseDataset(Serializable):
 
         if boxes is not None:
             box_list = [
-                Box(ijhw=ijhw, labels=box_labels)
-                for ijhw, box_labels in zip(boxes, labels)
-                if None not in ijhw and all([c > 0 for c in ijhw[:2]])
+                Box.from_xywh(xywh=tf.convert_to_tensor(xywh),
+                              labels=box_labels)
+                for xywh, box_labels in zip(boxes, labels)
+                if None not in xywh and all([c > 0 for c in xywh[:2]])
             ]
         else:
             box_list = None
@@ -758,6 +759,7 @@ class BaseDataset(Serializable):
     def unique_elements_from_list_column(
             self,
             column: str,
+            flat: bool = True
             # label_position: Optional[Union[int, List[int]]] = None
     ) -> List[List[str]]:
         r"""
@@ -765,50 +767,56 @@ class BaseDataset(Serializable):
         Parameters
         ----------
         column
+        flat
         label_position
 
         Returns
         -------
 
         """
-        try:
-            is_list = not isinstance(self.df[column][0][0], list)
-        except IndexError:
-            is_list = True
-
-        if is_list:
-            # rows with labels = None (as opposed to []) are not labelled
+        if flat:
             labels_column = self.df[column]
             labels_column = labels_column[labels_column.notnull()]
-
-            # if label_position is None:
-            label_position = range(
-                np.max([len(labels) for labels in labels_column])
-            )
-
-            uniques = [[] for _ in label_position]
-            for labels in labels_column:
-                for i, label in enumerate(labels):
-                    if label is None:
-                        continue
-                    uniques[i].append(label)
-
-            return [sorted(list(set(unique))) for unique in uniques]
+            return [sorted(list(set([e for l in labels_column for e in l])))]
         else:
-            # if label_position is None:
-            label_position = range(len(self.df[column][0][0]))
+            try:
+                is_list = not isinstance(self.df[column][0][0], list)
+            except IndexError:
+                is_list = True
 
-            uniques = [[] for _ in label_position]
-            for labels in self.df[column]:
-                if not isinstance(labels, list):
-                    continue
-                for label in labels:
-                    for i, l in enumerate(np.asanyarray(label)):
-                        if l is None:
+            if is_list:
+                # rows with labels = None (as opposed to []) are not labelled
+                labels_column = self.df[column]
+                labels_column = labels_column[labels_column.notnull()]
+
+                # if label_position is None:
+                label_position = range(
+                    np.max([len(labels) for labels in labels_column])
+                )
+
+                uniques = [[] for _ in label_position]
+                for labels in labels_column:
+                    for i, label in enumerate(labels):
+                        if label is None:
                             continue
-                        uniques[i].append(l)
+                        uniques[i].append(label)
 
-            return [sorted(list(set(unique))) for unique in uniques]
+                return [sorted(list(set(unique))) for unique in uniques]
+            else:
+                # if label_position is None:
+                label_position = range(len(self.df[column][0][0]))
+
+                uniques = [[] for _ in label_position]
+                for labels in self.df[column]:
+                    if not isinstance(labels, list):
+                        continue
+                    for label in labels:
+                        for i, l in enumerate(np.asanyarray(label)):
+                            if l is None:
+                                continue
+                            uniques[i].append(l)
+
+                return [sorted(list(set(unique))) for unique in uniques]
 
     def view_row(self, index: int, image_args: Dict = None):
         _, image = self[index]
