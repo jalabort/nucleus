@@ -50,6 +50,23 @@ class DeterministicTransform(Transform):
     """
     n_factors: int
 
+    @staticmethod
+    def valid_boxes(boxes: tf.Tensor):
+        r"""
+
+        Parameters
+        ----------
+        boxes
+
+        Returns
+        -------
+
+        """
+        if boxes is None or tf.equal(tf.reduce_mean(boxes), -1):
+            return False
+
+        return True
+
     @abstractmethod
     def _operation(
             self,
@@ -165,11 +182,11 @@ class RandomTransform(Transform):
         """
         # TODO: Some of these n_factors checks seem a bit hacky... Can we do
         #  better?
-        if self.transform.n_factors == -1:
+        if self.transform.n_factors == -1 and boxes is not None:
             factors_shape = tf_get_shape(boxes[..., :4])
         elif self.transform.n_factors == -2:
             factors_shape = tf_get_shape(image)
-        elif self.transform.n_factors == -3:
+        elif self.transform.n_factors == -3 and boxes is not None:
             factors_shape = ()
             self.min_factor = 0
             self.max_factor = tf.cast(
@@ -177,7 +194,8 @@ class RandomTransform(Transform):
                 dtype=tf.float32
             )
         else:
-            factors_shape = (self.transform.n_factors,)
+            n_factors = self.transform.n_factors
+            factors_shape = (n_factors,) if n_factors > 0 else (1,)
 
         factors = tf.random.uniform(
             shape=factors_shape,

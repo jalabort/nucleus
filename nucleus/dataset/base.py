@@ -234,7 +234,7 @@ class BaseDataset(Serializable):
         boxes = row.get(DatasetKeys.BOXES.value)
         labels = row.get(DatasetKeys.LABELS.value)
 
-        if boxes is not None:
+        if boxes not in [None, [[]]]:
             box_list = [
                 Box.from_xywh(xywh=tf.convert_to_tensor(xywh),
                               labels=box_labels)

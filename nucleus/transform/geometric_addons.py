@@ -54,7 +54,7 @@ class Pan(DeterministicTransform):
             interpolation='BILINEAR',
         )
 
-        if boxes is not None:
+        if self.valid_boxes(boxes=boxes):
             offsets = tf.stack([pan_factor[0], pan_factor[1]])
             boxes = tf.concat(
                 [
@@ -85,8 +85,8 @@ class RandomPan(RandomTransform):
     """
     def __init__(
             self,
-            min_factor: float = -0.2,
-            max_factor: float = 0.2,
+            min_factor: float = -0.1,
+            max_factor: float = 0.1,
             pad: bool = True
     ) -> None:
         super().__init__(
@@ -133,7 +133,7 @@ class Rotate(DeterministicTransform):
         angle = (pi / 180) * angle_factor
         image = tfa.image.rotate(image, angle, interpolation='BILINEAR')
 
-        if boxes is not None:
+        if self.valid_boxes(boxes=boxes):
             height, width, _ = tf_get_shape(image)
             image_shape = tf.stack([height, width])
 
